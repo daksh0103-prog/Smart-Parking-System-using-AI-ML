@@ -2,56 +2,51 @@ import os
 import qrcode
 import io
 import json
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, MimeType, Attachment, FileContent, FileName, FileType, Disposition, ContentId
+import resend
 import base64
 
 # ─────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────
 SENDER_EMAIL = os.getenv("PARKSMART_EMAIL", "chananadaksh14@gmail.com")
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+resend.api_key = RESEND_API_KEY
 
 
 def _send(to_email: str, subject: str, html_body: str):
-    """Send email via SendGrid."""
+    """Send email via Resend."""
     try:
-        message = Mail(
-            from_email=SENDER_EMAIL,
-            to_emails=to_email,
-            subject=subject,
-            html_content=html_body
-        )
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        sg.send(message)
+        params = {
+            "from": "ParkSmart <onboarding@resend.dev>",
+            "to": [to_email],
+            "subject": subject,
+            "html": html_body,
+        }
+        resend.Emails.send(params)
         print(f"✅ Email sent to {to_email}")
     except Exception as e:
         print(f"❌ Email failed: {e}")
 
 
 def _send_with_qr(to_email: str, subject: str, html_body: str, qr_bytes: bytes):
-    """Send email with embedded QR code via SendGrid."""
+    """Send email with embedded QR code via Resend."""
     try:
-        message = Mail(
-            from_email=SENDER_EMAIL,
-            to_emails=to_email,
-            subject=subject,
-            html_content=html_body
-        )
-
-        # Attach QR code as inline image
         encoded_qr = base64.b64encode(qr_bytes).decode()
-        attachment = Attachment()
-        attachment.file_content = FileContent(encoded_qr)
-        attachment.file_type = FileType("image/png")
-        attachment.file_name = FileName("booking_qr.png")
-        attachment.disposition = Disposition("inline")
-        attachment.content_id = ContentId("qrcode")
-        message.attachment = attachment
-
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        sg.send(message)
+        params = {
+            "from": "ParkSmart <onboarding@resend.dev>",
+            "to": [to_email],
+            "subject": subject,
+            "html": html_body,
+            "attachments": [
+                {
+                    "filename": "booking_qr.png",
+                    "content": encoded_qr,
+                }
+            ],
+        }
+        resend.Emails.send(params)
         print(f"✅ Email with QR sent to {to_email}")
     except Exception as e:
         print(f"❌ Email with QR failed: {e}")
@@ -79,17 +74,17 @@ def _generate_qr(data: dict) -> bytes:
 def send_welcome_email(to_email: str, username: str):
     subject = "Welcome to ParkSmart 🚗"
     html = f"""
-    <div style="font-family:Arial,sans-serif;background:#0a0e1a;padding:40px;min-height:100vh;">
+    <div style="font-family:Arial,sans-serif;background:#0a0e1a;padding:40px;">
       <div style="max-width:520px;margin:0 auto;background:#111827;border:1px solid #1e2d45;border-radius:16px;overflow:hidden;">
         <div style="background:linear-gradient(90deg,#00d4ff,#4d7cfe);height:4px;"></div>
-        <div style="padding:36px 36px 28px;">
+        <div style="padding:36px;">
           <div style="font-size:28px;margin-bottom:6px;">🚗</div>
-          <h1 style="font-family:Arial,sans-serif;font-size:22px;font-weight:800;color:#e8edf5;margin:0 0 6px;">
+          <h1 style="font-size:22px;font-weight:800;color:#e8edf5;margin:0 0 6px;">
             Welcome to <span style="color:#00d4ff;">ParkSmart</span>
           </h1>
           <p style="color:#5a6a84;font-size:13px;margin:0 0 28px;">AI-Powered Parking Management</p>
           <p style="color:#e8edf5;font-size:14px;line-height:1.7;margin:0 0 20px;">
-            Hey <strong style="color:#00d4ff;">{username}</strong>, your account has been created successfully.
+            Hey <strong style="color:#00d4ff;">{username}</strong>, your account has been created successfully!
             You can now log in and start booking parking slots instantly.
           </p>
           <div style="background:#0a0e1a;border:1px solid #1e2d45;border-radius:12px;padding:20px;margin-bottom:28px;">
@@ -98,16 +93,12 @@ def send_welcome_email(to_email: str, username: str):
             <div style="color:#e8edf5;font-size:13px;margin-bottom:8px;">📋 &nbsp; Real-time slot booking &amp; release</div>
             <div style="color:#e8edf5;font-size:13px;">📊 &nbsp; Full booking history</div>
           </div>
-          <a href="{FRONTEND_URL}"
-             style="display:inline-block;background:#00d4ff;color:#000;font-weight:700;font-size:14px;
-                    padding:13px 28px;border-radius:10px;text-decoration:none;">
+          <a href="{FRONTEND_URL}" style="display:inline-block;background:#00d4ff;color:#000;font-weight:700;font-size:14px;padding:13px 28px;border-radius:10px;text-decoration:none;">
             Go to ParkSmart →
           </a>
         </div>
         <div style="padding:18px 36px;border-top:1px solid #1e2d45;">
-          <p style="color:#5a6a84;font-size:11px;margin:0;">
-            This email was sent because you registered on ParkSmart.
-          </p>
+          <p style="color:#5a6a84;font-size:11px;margin:0;">This email was sent because you registered on ParkSmart.</p>
         </div>
       </div>
     </div>
@@ -133,10 +124,10 @@ def send_booking_confirmation(to_email: str, username: str, slot_number: int,
     }
     qr_bytes = _generate_qr(qr_data)
     html = f"""
-    <div style="font-family:Arial,sans-serif;background:#0a0e1a;padding:40px;min-height:100vh;">
+    <div style="font-family:Arial,sans-serif;background:#0a0e1a;padding:40px;">
       <div style="max-width:520px;margin:0 auto;background:#111827;border:1px solid #1e2d45;border-radius:16px;overflow:hidden;">
         <div style="background:linear-gradient(90deg,#00e676,#00d4ff);height:4px;"></div>
-        <div style="padding:36px 36px 28px;">
+        <div style="padding:36px;">
           <div style="font-size:28px;margin-bottom:6px;">✅</div>
           <h1 style="font-size:22px;font-weight:800;color:#e8edf5;margin:0 0 6px;">
             Booking <span style="color:#00e676;">Confirmed</span>
@@ -148,7 +139,7 @@ def send_booking_confirmation(to_email: str, username: str, slot_number: int,
             </div>
             <div style="padding:20px;">
               <table style="width:100%;border-collapse:collapse;">
-                <tr><td style="color:#5a6a84;font-size:13px;padding:7px 0;">Booking ID</td><td style="color:#00d4ff;font-size:14px;font-weight:700;text-align:right;">#{booking_id}</td></tr>
+                <tr><td style="color:#5a6a84;font-size:13px;padding:7px 0;">Booking ID</td><td style="color:#00d4ff;font-weight:700;text-align:right;">#{booking_id}</td></tr>
                 <tr><td style="color:#5a6a84;font-size:13px;padding:7px 0;">Slot</td><td style="color:#00d4ff;font-size:16px;font-weight:700;text-align:right;">S{slot_number}</td></tr>
                 <tr><td style="color:#5a6a84;font-size:13px;padding:7px 0;">Zone</td><td style="color:#e8edf5;font-size:13px;text-align:right;">Zone {zone}</td></tr>
                 <tr><td style="color:#5a6a84;font-size:13px;padding:7px 0;">Vehicle</td><td style="color:#e8edf5;font-size:13px;text-align:right;">{vehicle_number}</td></tr>
@@ -157,11 +148,7 @@ def send_booking_confirmation(to_email: str, username: str, slot_number: int,
               </table>
             </div>
           </div>
-          <div style="background:#0a0e1a;border:1px solid #1e2d45;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;">
-            <p style="color:#5a6a84;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 16px;">Your Entry QR Code</p>
-            <img src="cid:qrcode" alt="Booking QR Code" style="width:180px;height:180px;border-radius:12px;" />
-            <p style="color:#5a6a84;font-size:12px;margin:14px 0 0;">Show this QR code at the parking entry gate</p>
-          </div>
+          <p style="color:#5a6a84;font-size:12px;text-align:center;margin-bottom:16px;">📎 Your QR code is attached to this email — show it at the parking entry gate</p>
           <a href="{FRONTEND_URL}" style="display:inline-block;background:#00e676;color:#000;font-weight:700;font-size:14px;padding:13px 28px;border-radius:10px;text-decoration:none;">
             View My Booking →
           </a>
@@ -181,10 +168,10 @@ def send_booking_confirmation(to_email: str, username: str, slot_number: int,
 def send_reset_email(to_email: str, username: str, reset_link: str):
     subject = "Reset Your ParkSmart Password 🔐"
     html = f"""
-    <div style="font-family:Arial,sans-serif;background:#0a0e1a;padding:40px;min-height:100vh;">
+    <div style="font-family:Arial,sans-serif;background:#0a0e1a;padding:40px;">
       <div style="max-width:520px;margin:0 auto;background:#111827;border:1px solid #1e2d45;border-radius:16px;overflow:hidden;">
         <div style="background:linear-gradient(90deg,#ff3d5a,#ff6b35);height:4px;"></div>
-        <div style="padding:36px 36px 28px;">
+        <div style="padding:36px;">
           <div style="font-size:28px;margin-bottom:6px;">🔐</div>
           <h1 style="font-size:22px;font-weight:800;color:#e8edf5;margin:0 0 6px;">
             Reset Your <span style="color:#ff6b35;">Password</span>
