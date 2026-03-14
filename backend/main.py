@@ -26,7 +26,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 app = FastAPI(title="ParkSmart AI API")
 
 # Allow both local dev and production frontend
-ALLOWED_ORIGINS = [*]
+ALLOWED_ORIGINS = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
