@@ -19,7 +19,7 @@ import json
 # ─────────────────────────────────────────────
 
 SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 587
+SMTP_PORT = 465
 SENDER_EMAIL = os.getenv("PARKSMART_EMAIL", "chananadaksh12@gmail.com")
 SENDER_PASSWORD = os.getenv("PARKSMART_PASSWORD", "yqju llyw heqe erkw")
 
@@ -32,9 +32,8 @@ def _send(to_email: str, subject: str, html_body: str):
     msg["To"] = to_email
     msg.attach(MIMEText(html_body, "html"))
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+    with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
         server.ehlo()
-        server.starttls()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
 
