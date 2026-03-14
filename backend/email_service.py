@@ -1,66 +1,60 @@
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.image import MIMEImage
 import os
 import qrcode
 import io
 import json
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, MimeType, Attachment, FileContent, FileName, FileType, Disposition, ContentId
+import base64
 
 # ─────────────────────────────────────────────
-# CONFIG — set these in your environment or
-# replace directly for testing:
-#   PARKSMART_EMAIL = "your_gmail@gmail.com"
-#   PARKSMART_PASSWORD = "your_app_password"
-#
-# IMPORTANT: Use a Gmail App Password, NOT your
-# real Gmail password. Generate one at:
-# https://myaccount.google.com/apppasswords
+# CONFIG
 # ─────────────────────────────────────────────
-
-SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 465
-SENDER_EMAIL = os.getenv("PARKSMART_EMAIL", "chananadaksh12@gmail.com")
-SENDER_PASSWORD = os.getenv("PARKSMART_PASSWORD", "yqju llyw heqe erkw")
+SENDER_EMAIL = os.getenv("PARKSMART_EMAIL", "chananadaksh14@gmail.com")
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 
 def _send(to_email: str, subject: str, html_body: str):
-    """Internal helper — builds and sends a MIME email."""
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"ParkSmart 🚗 <{SENDER_EMAIL}>"
-    msg["To"] = to_email
-    msg.attach(MIMEText(html_body, "html"))
-
-    with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
-        server.ehlo()
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
+    """Send email via SendGrid."""
+    try:
+        message = Mail(
+            from_email=SENDER_EMAIL,
+            to_emails=to_email,
+            subject=subject,
+            html_content=html_body
+        )
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        sg.send(message)
+        print(f"✅ Email sent to {to_email}")
+    except Exception as e:
+        print(f"❌ Email failed: {e}")
 
 
 def _send_with_qr(to_email: str, subject: str, html_body: str, qr_bytes: bytes):
-    """Send email with an embedded QR code image (cid:qrcode)."""
-    msg = MIMEMultipart("related")
-    msg["Subject"] = subject
-    msg["From"] = f"ParkSmart 🚗 <{SENDER_EMAIL}>"
-    msg["To"] = to_email
+    """Send email with embedded QR code via SendGrid."""
+    try:
+        message = Mail(
+            from_email=SENDER_EMAIL,
+            to_emails=to_email,
+            subject=subject,
+            html_content=html_body
+        )
 
-    # Attach HTML body
-    alt = MIMEMultipart("alternative")
-    alt.attach(MIMEText(html_body, "html"))
-    msg.attach(alt)
+        # Attach QR code as inline image
+        encoded_qr = base64.b64encode(qr_bytes).decode()
+        attachment = Attachment()
+        attachment.file_content = FileContent(encoded_qr)
+        attachment.file_type = FileType("image/png")
+        attachment.file_name = FileName("booking_qr.png")
+        attachment.disposition = Disposition("inline")
+        attachment.content_id = ContentId("qrcode")
+        message.attachment = attachment
 
-    # Attach QR image with Content-ID so HTML can reference it inline
-    qr_img = MIMEImage(qr_bytes, _subtype="png")
-    qr_img.add_header("Content-ID", "<qrcode>")
-    qr_img.add_header("Content-Disposition", "inline", filename="booking_qr.png")
-    msg.attach(qr_img)
-
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        sg.send(message)
+        print(f"✅ Email with QR sent to {to_email}")
+    except Exception as e:
+        print(f"❌ Email with QR failed: {e}")
 
 
 def _generate_qr(data: dict) -> bytes:
@@ -85,47 +79,34 @@ def _generate_qr(data: dict) -> bytes:
 def send_welcome_email(to_email: str, username: str):
     subject = "Welcome to ParkSmart 🚗"
     html = f"""
-    <div style="font-family:'DM Mono',monospace;background:#0a0e1a;padding:40px;min-height:100vh;">
+    <div style="font-family:Arial,sans-serif;background:#0a0e1a;padding:40px;min-height:100vh;">
       <div style="max-width:520px;margin:0 auto;background:#111827;border:1px solid #1e2d45;border-radius:16px;overflow:hidden;">
-
-        <!-- Header bar -->
         <div style="background:linear-gradient(90deg,#00d4ff,#4d7cfe);height:4px;"></div>
-
-        <!-- Body -->
         <div style="padding:36px 36px 28px;">
           <div style="font-size:28px;margin-bottom:6px;">🚗</div>
           <h1 style="font-family:Arial,sans-serif;font-size:22px;font-weight:800;color:#e8edf5;margin:0 0 6px;">
             Welcome to <span style="color:#00d4ff;">ParkSmart</span>
           </h1>
           <p style="color:#5a6a84;font-size:13px;margin:0 0 28px;">AI-Powered Parking Management</p>
-
           <p style="color:#e8edf5;font-size:14px;line-height:1.7;margin:0 0 20px;">
             Hey <strong style="color:#00d4ff;">{username}</strong>, your account has been created successfully.
             You can now log in and start booking parking slots instantly.
           </p>
-
-          <!-- Feature highlights -->
           <div style="background:#0a0e1a;border:1px solid #1e2d45;border-radius:12px;padding:20px;margin-bottom:28px;">
             <p style="color:#5a6a84;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 14px;">What you can do</p>
-            <div style="display:flex;flex-direction:column;gap:10px;">
-              <div style="color:#e8edf5;font-size:13px;">🤖 &nbsp; AI-recommended parking slots</div>
-              <div style="color:#e8edf5;font-size:13px;">📋 &nbsp; Real-time slot booking &amp; release</div>
-              <div style="color:#e8edf5;font-size:13px;">📊 &nbsp; Full booking history</div>
-            </div>
+            <div style="color:#e8edf5;font-size:13px;margin-bottom:8px;">🤖 &nbsp; AI-recommended parking slots</div>
+            <div style="color:#e8edf5;font-size:13px;margin-bottom:8px;">📋 &nbsp; Real-time slot booking &amp; release</div>
+            <div style="color:#e8edf5;font-size:13px;">📊 &nbsp; Full booking history</div>
           </div>
-
-          <a href="http://localhost:3000"
+          <a href="{FRONTEND_URL}"
              style="display:inline-block;background:#00d4ff;color:#000;font-weight:700;font-size:14px;
-                    padding:13px 28px;border-radius:10px;text-decoration:none;letter-spacing:0.3px;">
+                    padding:13px 28px;border-radius:10px;text-decoration:none;">
             Go to ParkSmart →
           </a>
         </div>
-
-        <!-- Footer -->
         <div style="padding:18px 36px;border-top:1px solid #1e2d45;">
           <p style="color:#5a6a84;font-size:11px;margin:0;">
-            This email was sent because you registered on ParkSmart.<br>
-            If this wasn't you, please ignore this email.
+            This email was sent because you registered on ParkSmart.
           </p>
         </div>
       </div>
@@ -141,8 +122,6 @@ def send_booking_confirmation(to_email: str, username: str, slot_number: int,
                                vehicle_number: str, booked_at: str, zone: str = "A",
                                booking_id: int = 0):
     subject = f"Booking Confirmed — Slot S{slot_number} 🅿️"
-
-    # QR code data — everything a guard needs to verify entry
     qr_data = {
         "booking_id": booking_id,
         "slot": f"S{slot_number}",
@@ -153,83 +132,42 @@ def send_booking_confirmation(to_email: str, username: str, slot_number: int,
         "issued_by": "ParkSmart AI"
     }
     qr_bytes = _generate_qr(qr_data)
-
     html = f"""
     <div style="font-family:Arial,sans-serif;background:#0a0e1a;padding:40px;min-height:100vh;">
       <div style="max-width:520px;margin:0 auto;background:#111827;border:1px solid #1e2d45;border-radius:16px;overflow:hidden;">
-
-        <!-- Header bar -->
         <div style="background:linear-gradient(90deg,#00e676,#00d4ff);height:4px;"></div>
-
-        <!-- Body -->
         <div style="padding:36px 36px 28px;">
           <div style="font-size:28px;margin-bottom:6px;">✅</div>
           <h1 style="font-size:22px;font-weight:800;color:#e8edf5;margin:0 0 6px;">
             Booking <span style="color:#00e676;">Confirmed</span>
           </h1>
           <p style="color:#5a6a84;font-size:13px;margin:0 0 28px;">Your parking slot has been reserved</p>
-
-          <!-- Booking details card -->
           <div style="background:#0a0e1a;border:1px solid #1e2d45;border-radius:12px;overflow:hidden;margin-bottom:24px;">
             <div style="padding:14px 20px;border-bottom:1px solid #1e2d45;">
               <p style="color:#5a6a84;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0;">Booking Details</p>
             </div>
             <div style="padding:20px;">
               <table style="width:100%;border-collapse:collapse;">
-                <tr>
-                  <td style="color:#5a6a84;font-size:13px;padding:7px 0;">Booking ID</td>
-                  <td style="color:#00d4ff;font-size:14px;font-weight:700;text-align:right;">#{booking_id}</td>
-                </tr>
-                <tr>
-                  <td style="color:#5a6a84;font-size:13px;padding:7px 0;">Slot Number</td>
-                  <td style="color:#00d4ff;font-size:16px;font-weight:700;text-align:right;">S{slot_number}</td>
-                </tr>
-                <tr>
-                  <td style="color:#5a6a84;font-size:13px;padding:7px 0;">Zone</td>
-                  <td style="color:#e8edf5;font-size:13px;text-align:right;">Zone {zone}</td>
-                </tr>
-                <tr>
-                  <td style="color:#5a6a84;font-size:13px;padding:7px 0;">Vehicle</td>
-                  <td style="color:#e8edf5;font-size:13px;text-align:right;">{vehicle_number}</td>
-                </tr>
-                <tr>
-                  <td style="color:#5a6a84;font-size:13px;padding:7px 0;">Booked By</td>
-                  <td style="color:#e8edf5;font-size:13px;text-align:right;">{username}</td>
-                </tr>
-                <tr>
-                  <td style="color:#5a6a84;font-size:13px;padding:7px 0;">Booked At</td>
-                  <td style="color:#e8edf5;font-size:13px;text-align:right;">{booked_at}</td>
-                </tr>
+                <tr><td style="color:#5a6a84;font-size:13px;padding:7px 0;">Booking ID</td><td style="color:#00d4ff;font-size:14px;font-weight:700;text-align:right;">#{booking_id}</td></tr>
+                <tr><td style="color:#5a6a84;font-size:13px;padding:7px 0;">Slot</td><td style="color:#00d4ff;font-size:16px;font-weight:700;text-align:right;">S{slot_number}</td></tr>
+                <tr><td style="color:#5a6a84;font-size:13px;padding:7px 0;">Zone</td><td style="color:#e8edf5;font-size:13px;text-align:right;">Zone {zone}</td></tr>
+                <tr><td style="color:#5a6a84;font-size:13px;padding:7px 0;">Vehicle</td><td style="color:#e8edf5;font-size:13px;text-align:right;">{vehicle_number}</td></tr>
+                <tr><td style="color:#5a6a84;font-size:13px;padding:7px 0;">Booked By</td><td style="color:#e8edf5;font-size:13px;text-align:right;">{username}</td></tr>
+                <tr><td style="color:#5a6a84;font-size:13px;padding:7px 0;">Booked At</td><td style="color:#e8edf5;font-size:13px;text-align:right;">{booked_at}</td></tr>
               </table>
             </div>
           </div>
-
-          <!-- QR Code section -->
           <div style="background:#0a0e1a;border:1px solid #1e2d45;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;">
-            <p style="color:#5a6a84;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 16px;">
-              Your Entry QR Code
-            </p>
-            <!-- Inline QR image referenced by Content-ID -->
-            <img src="cid:qrcode" alt="Booking QR Code"
-                 style="width:180px;height:180px;border-radius:12px;border:3px solid #1e2d45;" />
-            <p style="color:#5a6a84;font-size:12px;margin:14px 0 0;">
-              Show this QR code at the parking entry gate
-            </p>
+            <p style="color:#5a6a84;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 16px;">Your Entry QR Code</p>
+            <img src="cid:qrcode" alt="Booking QR Code" style="width:180px;height:180px;border-radius:12px;" />
+            <p style="color:#5a6a84;font-size:12px;margin:14px 0 0;">Show this QR code at the parking entry gate</p>
           </div>
-
-          <a href="http://localhost:3000"
-             style="display:inline-block;background:#00e676;color:#000;font-weight:700;font-size:14px;
-                    padding:13px 28px;border-radius:10px;text-decoration:none;letter-spacing:0.3px;">
+          <a href="{FRONTEND_URL}" style="display:inline-block;background:#00e676;color:#000;font-weight:700;font-size:14px;padding:13px 28px;border-radius:10px;text-decoration:none;">
             View My Booking →
           </a>
         </div>
-
-        <!-- Footer -->
         <div style="padding:18px 36px;border-top:1px solid #1e2d45;">
-          <p style="color:#5a6a84;font-size:11px;margin:0;">
-            ParkSmart AI Parking · Booking ID #{booking_id} saved to your history.<br>
-            Release your slot via the app when you leave.
-          </p>
+          <p style="color:#5a6a84;font-size:11px;margin:0;">ParkSmart AI Parking · Booking ID #{booking_id}</p>
         </div>
       </div>
     </div>
@@ -245,46 +183,28 @@ def send_reset_email(to_email: str, username: str, reset_link: str):
     html = f"""
     <div style="font-family:Arial,sans-serif;background:#0a0e1a;padding:40px;min-height:100vh;">
       <div style="max-width:520px;margin:0 auto;background:#111827;border:1px solid #1e2d45;border-radius:16px;overflow:hidden;">
-
         <div style="background:linear-gradient(90deg,#ff3d5a,#ff6b35);height:4px;"></div>
-
         <div style="padding:36px 36px 28px;">
           <div style="font-size:28px;margin-bottom:6px;">🔐</div>
           <h1 style="font-size:22px;font-weight:800;color:#e8edf5;margin:0 0 6px;">
             Reset Your <span style="color:#ff6b35;">Password</span>
           </h1>
-          <p style="color:#5a6a84;font-size:13px;margin:0 0 28px;">
-            We received a request to reset the password for your ParkSmart account.
-          </p>
-
+          <p style="color:#5a6a84;font-size:13px;margin:0 0 28px;">We received a request to reset your ParkSmart password.</p>
           <p style="color:#e8edf5;font-size:14px;line-height:1.7;margin:0 0 24px;">
-            Hey <strong style="color:#00d4ff;">{username}</strong>, click the button below
-            to reset your password. This link is valid for <strong style="color:#ffd600;">30 minutes</strong>.
+            Hey <strong style="color:#00d4ff;">{username}</strong>, click below to reset your password.
+            This link is valid for <strong style="color:#ffd600;">30 minutes</strong>.
           </p>
-
-          <a href="{reset_link}"
-             style="display:inline-block;background:#ff6b35;color:#fff;font-weight:700;font-size:14px;
-                    padding:13px 28px;border-radius:10px;text-decoration:none;letter-spacing:0.3px;margin-bottom:24px;">
+          <a href="{reset_link}" style="display:inline-block;background:#ff6b35;color:#fff;font-weight:700;font-size:14px;padding:13px 28px;border-radius:10px;text-decoration:none;margin-bottom:24px;">
             Reset My Password →
           </a>
-
           <div style="background:#0a0e1a;border:1px solid #1e2d45;border-radius:10px;padding:16px;margin-bottom:20px;">
-            <p style="color:#5a6a84;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;margin:0 0 8px;">
-              Or copy this link into your browser
-            </p>
+            <p style="color:#5a6a84;font-size:11px;margin:0 0 8px;">Or copy this link:</p>
             <p style="color:#00d4ff;font-size:12px;word-break:break-all;margin:0;">{reset_link}</p>
           </div>
-
-          <p style="color:#5a6a84;font-size:12px;line-height:1.6;margin:0;">
-            If you did not request a password reset, you can safely ignore this email.
-            Your password will not be changed.
-          </p>
+          <p style="color:#5a6a84;font-size:12px;">If you did not request this, ignore this email.</p>
         </div>
-
         <div style="padding:18px 36px;border-top:1px solid #1e2d45;">
-          <p style="color:#5a6a84;font-size:11px;margin:0;">
-            ParkSmart AI Parking · This link expires in 30 minutes.
-          </p>
+          <p style="color:#5a6a84;font-size:11px;margin:0;">ParkSmart AI Parking · Link expires in 30 minutes.</p>
         </div>
       </div>
     </div>
