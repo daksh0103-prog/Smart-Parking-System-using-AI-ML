@@ -19,7 +19,7 @@ load_dotenv()
 
 from database import engine, SessionLocal
 import models, schemas
-from email_service import send_welcome_email, send_booking_confirmation, send_reset_email
+#from email_service import send_welcome_email, send_booking_confirmation, send_reset_email
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
