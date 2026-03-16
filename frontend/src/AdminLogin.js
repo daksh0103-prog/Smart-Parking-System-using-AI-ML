@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import "./AdminLogin.css";
 
-// Hardcoded admin credentials
 const ADMIN_USERNAME = "daksh";
 const ADMIN_PASSWORD = "01032006";
 
@@ -9,58 +8,94 @@ export default function AdminLogin({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = () => {
     setError("");
-    if (!username || !password) { setError("Please fill all fields"); return; }
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-      onLogin();
-    } else {
-      setError("Invalid admin credentials");
-    }
+    if (!username || !password) { setError("ERR // ALL FIELDS REQUIRED"); return; }
+    setLoading(true);
+    setTimeout(() => {
+      if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        onLogin();
+      } else {
+        setError("ERR // INVALID ADMIN CREDENTIALS");
+        setLoading(false);
+      }
+    }, 800);
   };
 
   return (
-    <div className="admin-login-container">
-      <div className="admin-login-card">
-        <div className="admin-login-card::before"></div>
-        <div className="admin-login-logo">
-          <h1>🚗 Park<span>Smart</span></h1>
-          <div className="admin-login-badge">ADMIN PANEL</div>
-          <p>Restricted access — authorized personnel only</p>
+    <div className="al-container">
+      <div className="al-bg">
+        <div className="al-orb al-orb1" />
+        <div className="al-orb al-orb2" />
+      </div>
+
+      <div className="al-wrapper">
+        {/* Corner brackets */}
+        <div className="al-corner al-tl" />
+        <div className="al-corner al-tr" />
+        <div className="al-corner al-bl" />
+        <div className="al-corner al-br" />
+
+        {/* Top scan line */}
+        <div className="al-scanline" />
+
+        {/* Icon */}
+        <div className="al-icon-wrap">
+          <div className="al-icon-ring1" />
+          <div className="al-icon-ring2" />
+          <span className="al-icon">🛡️</span>
         </div>
 
-        <div className="admin-input-group">
-          <label className="admin-input-label">Admin Username</label>
+        {/* Brand */}
+        <div className="al-brand">
+          <h1>PARK<span>SMART</span></h1>
+          <div className="al-badge">
+            <span className="al-badge-dot" />
+            ADMIN ACCESS TERMINAL
+          </div>
+          <p className="al-sub">Restricted — Authorized Personnel Only</p>
+        </div>
+
+        {/* Divider */}
+        <div className="al-divider" />
+
+        {/* Inputs */}
+        <div className="al-input-group">
+          <label className="al-label">// Admin Username</label>
           <input
-            className="admin-input"
-            placeholder="Enter admin username"
+            className="al-input"
+            placeholder="Enter admin identifier..."
             value={username}
             onChange={e => setUsername(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleLogin()}
           />
         </div>
 
-        <div className="admin-input-group">
-          <label className="admin-input-label">Admin Password</label>
+        <div className="al-input-group">
+          <label className="al-label">// Admin Password</label>
           <input
             type="password"
-            className="admin-input"
-            placeholder="Enter admin password"
+            className="al-input"
+            placeholder="Enter passkey..."
             value={password}
             onChange={e => setPassword(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleLogin()}
           />
         </div>
 
-        <button className="admin-login-btn" onClick={handleLogin}>
-          Access Admin Panel →
+        {/* Button */}
+        <button className="al-btn" onClick={handleLogin} disabled={loading}>
+          <span>{loading ? "AUTHENTICATING..." : "ACCESS ADMIN PANEL →"}</span>
         </button>
 
-        {error && <div className="admin-login-error">{error}</div>}
+        {error && <div className="al-error">{error}</div>}
 
-        <div className="admin-login-hint">
-          Default credentials: <strong>admin</strong> / <strong>parksmart@admin123</strong>
+        {/* Bottom bar */}
+        <div className="al-bottom">
+          <span className="al-bottom-dot" />
+          <span className="al-bottom-text">SYS:PARKSMART // ADMIN-NODE-01</span>
         </div>
       </div>
     </div>
