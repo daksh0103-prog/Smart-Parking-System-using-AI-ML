@@ -97,13 +97,11 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
         {/* ══ LEFT PANEL ══ */}
         <div className="login-left">
           <div className="login-brand">
-            <span className="login-brand-icon">🚗</span>
-            <h1>PARK<span className="accent">SMART</span></h1>
-            <div className="login-brand-sub">AI PARKING SYS v2.0<span>_</span></div>
-            <div className="login-status">
-              <div className="login-status-dot" />
-              SYSTEM ONLINE
-            </div>
+            <img 
+              src="/parksmart-logo.svg" 
+              alt="ParkSmart" 
+              style={{width:"240px", marginBottom:"8px"}} 
+            />
           </div>
 
           <div className="login-features">
