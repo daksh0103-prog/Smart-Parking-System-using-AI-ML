@@ -387,7 +387,6 @@ export default function App() {
                     <label className="input-label">Vehicle Number</label>
                     <input
                       className="text-input"
-                      placeholder="e.g. DL1CV3813"
                       value={vehicle}
                       onChange={e => setVehicle(e.target.value.toUpperCase())}
                       onKeyDown={e => e.key === "Enter" && bookSlot()}
