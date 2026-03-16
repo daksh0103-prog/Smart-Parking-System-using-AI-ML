@@ -5,7 +5,7 @@ import AdminLogin from "./AdminLogin";
 import AdminPanel from "./AdminPanel";
 import ResetPassword from "./ResetPassword";
 
-const API = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+const API = "http://127.0.0.1:8000";
 
 function timeAgo(dateStr) {
   const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
@@ -135,6 +135,11 @@ export default function App() {
   const bookSlot = async () => {
     if (selectedSlot === null) { setBookMsg({ type: "error", text: "Please select a slot first." }); return; }
     if (!vehicle.trim()) { setBookMsg({ type: "error", text: "Enter your vehicle number." }); return; }
+    const vehicleRegex = /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$/;
+    if (!vehicleRegex.test(vehicle.trim().toUpperCase())) {
+      setBookMsg({ type: "error", text: "Invalid format! Use: DL1CV3813 (State+District+Series+Number)" });
+      return;
+    }
     setBookMsg({ type: "", text: "" });
     try {
       const res = await fetch(`${API}/book`, {
@@ -382,7 +387,7 @@ export default function App() {
                     <label className="input-label">Vehicle Number</label>
                     <input
                       className="text-input"
-                      placeholder="e.g. DL01AB1234"
+                      placeholder="e.g. DL1CV3813"
                       value={vehicle}
                       onChange={e => setVehicle(e.target.value.toUpperCase())}
                       onKeyDown={e => e.key === "Enter" && bookSlot()}
