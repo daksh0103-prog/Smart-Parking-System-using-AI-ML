@@ -140,10 +140,7 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
 
         {/* ══ RIGHT PANEL ══ */}
         <div className="login-right">
-          <div className="login-panel-header">
-            <div className="login-panel-title">Access Terminal</div>
-            <div className="login-panel-id">SYS:PARKSMART // NODE:AUTH-01</div>
-          </div>
+          
 
           {tab === "forgot" ? (
             <>
