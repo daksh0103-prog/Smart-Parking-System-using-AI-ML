@@ -15,7 +15,7 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
 
   const handleLogin = async () => {
     setError("");
-    if (!username || !password) { setError("Please fill all fields"); return; }
+    if (!username || !password) { setError("ERR // MISSING CREDENTIALS"); return; }
     try {
       const res = await fetch(`${API}/login`, {
         method: "POST",
@@ -27,18 +27,18 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
         setLoggedIn(true);
       } else {
         const data = await res.json();
-        setError(data.detail || "Login failed");
+        setError("ERR // " + (data.detail || "ACCESS DENIED"));
       }
     } catch {
-      setError("Cannot connect to server. Is the backend running?");
+      setError("ERR // SERVER UNREACHABLE");
     }
   };
 
   const handleRegister = async () => {
     setError("");
-    if (!username || !email || !password) { setError("Please fill all fields"); return; }
-    if (!email.includes("@")) { setError("Enter a valid email address"); return; }
-    if (password.length < 4) { setError("Password must be at least 4 characters"); return; }
+    if (!username || !email || !password) { setError("ERR // ALL FIELDS REQUIRED"); return; }
+    if (!email.includes("@")) { setError("ERR // INVALID EMAIL FORMAT"); return; }
+    if (password.length < 4) { setError("ERR // PASSWORD TOO SHORT"); return; }
     try {
       const res = await fetch(`${API}/register`, {
         method: "POST",
@@ -48,20 +48,20 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
       if (res.ok) {
         setError("");
         setTab("login");
-        alert("Registered successfully! You can now log in.");
+        alert("IDENTITY CREATED // Proceed to login");
       } else {
         const data = await res.json();
-        setError(data.detail || "Registration failed");
+        setError("ERR // " + (data.detail || "REGISTRATION FAILED"));
       }
     } catch {
-      setError("Cannot connect to server. Is the backend running?");
+      setError("ERR // SERVER UNREACHABLE");
     }
   };
 
   const handleForgot = async () => {
     setForgotMsg({ type: "", text: "" });
-    if (!forgotEmail.trim()) { setForgotMsg({ type: "error", text: "Please enter your email." }); return; }
-    if (!forgotEmail.includes("@")) { setForgotMsg({ type: "error", text: "Enter a valid email address." }); return; }
+    if (!forgotEmail.trim()) { setForgotMsg({ type: "error", text: "ERR // EMAIL REQUIRED" }); return; }
+    if (!forgotEmail.includes("@")) { setForgotMsg({ type: "error", text: "ERR // INVALID EMAIL FORMAT" }); return; }
     setForgotLoading(true);
     try {
       const res = await fetch(`${API}/forgot-password`, {
@@ -71,13 +71,13 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
       });
       const data = await res.json();
       if (res.ok) {
-        setForgotMsg({ type: "success", text: "✅ Reset link sent! Check your email inbox." });
+        setForgotMsg({ type: "success", text: "OK // RESET LINK TRANSMITTED" });
         setForgotEmail("");
       } else {
-        setForgotMsg({ type: "error", text: data.detail || "Could not send reset email." });
+        setForgotMsg({ type: "error", text: "ERR // " + (data.detail || "TRANSMISSION FAILED") });
       }
     } catch {
-      setForgotMsg({ type: "error", text: "Cannot connect to server." });
+      setForgotMsg({ type: "error", text: "ERR // SERVER UNREACHABLE" });
     } finally {
       setForgotLoading(false);
     }
@@ -85,61 +85,74 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
 
   return (
     <div className="login-container">
-      <div className="login-grid" />
+      {/* Animated background */}
+      <div className="login-bg">
+        <div className="orb orb-1" />
+        <div className="orb orb-2" />
+        <div className="orb orb-3" />
+      </div>
 
       <div className="login-wrapper">
 
-        {/* ── LEFT PANEL ── */}
+        {/* ══ LEFT PANEL ══ */}
         <div className="login-left">
           <div className="login-brand">
             <span className="login-brand-icon">🚗</span>
-            <h1>Park<span>Smart</span></h1>
-            <p>AI-Powered Parking</p>
+            <h1>PARK<span className="accent">SMART</span></h1>
+            <div className="login-brand-sub">AI PARKING SYS v2.0<span>_</span></div>
+            <div className="login-status">
+              <div className="login-status-dot" />
+              SYSTEM ONLINE
+            </div>
           </div>
 
           <div className="login-features">
             <div className="login-feature">
               <div className="login-feature-icon">🤖</div>
               <div className="login-feature-text">
-                <strong>AI Slot Recommendation</strong>
-                DQN model picks your best spot
+                <strong>DQN AI ENGINE</strong>
+                <span>Reinforcement learning slot optimizer</span>
               </div>
             </div>
             <div className="login-feature">
               <div className="login-feature-icon">📱</div>
               <div className="login-feature-text">
-                <strong>QR Entry Pass</strong>
-                Instant QR code on every booking
+                <strong>QR ACCESS PASS</strong>
+                <span>Encrypted entry code per booking</span>
               </div>
             </div>
             <div className="login-feature">
               <div className="login-feature-icon">💰</div>
               <div className="login-feature-text">
-                <strong>Auto Fare Calculation</strong>
-                ₹10 per 30 min, transparent pricing
+                <strong>AUTO FARE CALC</strong>
+                <span>₹10 per 30 min · live duration</span>
               </div>
             </div>
             <div className="login-feature">
-              <div className="login-feature-icon">📊</div>
+              <div className="login-feature-icon">🛡️</div>
               <div className="login-feature-text">
-                <strong>Admin Dashboard</strong>
-                Full control & revenue tracking
+                <strong>ADMIN CONTROL</strong>
+                <span>Full dashboard · revenue tracking</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── RIGHT PANEL ── */}
+        {/* ══ RIGHT PANEL ══ */}
         <div className="login-right">
+          <div className="login-panel-header">
+            <div className="login-panel-title">Access Terminal</div>
+            <div className="login-panel-id">SYS:PARKSMART // NODE:AUTH-01</div>
+          </div>
 
           {tab === "forgot" ? (
             <>
               <div className="forgot-header">
                 <button className="forgot-back" onClick={() => { setTab("login"); setForgotMsg({ type: "", text: "" }); setForgotEmail(""); }}>
-                  ← Back to Login
+                  ← BACK
                 </button>
-                <div className="forgot-title">Reset Password</div>
-                <div className="forgot-sub">Enter your registered email and we'll send you a reset link.</div>
+                <div className="forgot-title">RESET ACCESS</div>
+                <div className="forgot-sub">Enter your registered email. A reset link will be transmitted to your inbox.</div>
               </div>
 
               <div className="input-group">
@@ -147,7 +160,7 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
                 <input
                   type="email"
                   className="login-input"
-                  placeholder="Enter your email"
+                  placeholder="user@domain.com"
                   value={forgotEmail}
                   onChange={e => setForgotEmail(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && handleForgot()}
@@ -155,7 +168,7 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
               </div>
 
               <button className="login-button" onClick={handleForgot} disabled={forgotLoading}>
-                {forgotLoading ? "Sending..." : "Send Reset Link →"}
+                <span>{forgotLoading ? "TRANSMITTING..." : "SEND RESET LINK →"}</span>
               </button>
 
               {forgotMsg.text && (
@@ -179,7 +192,7 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
                 <label className="input-label">Username</label>
                 <input
                   className="login-input"
-                  placeholder="Enter your username"
+                  placeholder="Enter identifier..."
                   value={username}
                   onChange={e => setUsernameInput(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && (tab === "login" ? handleLogin() : handleRegister())}
@@ -192,7 +205,7 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
                   <input
                     type="email"
                     className="login-input"
-                    placeholder="Enter your email"
+                    placeholder="user@domain.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && handleRegister()}
@@ -205,7 +218,7 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
                 <input
                   type="password"
                   className="login-input"
-                  placeholder="Enter your password"
+                  placeholder="Enter passkey..."
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && (tab === "login" ? handleLogin() : handleRegister())}
@@ -214,12 +227,12 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
 
               {tab === "login" && (
                 <div className="forgot-link" onClick={() => { setTab("forgot"); setError(""); }}>
-                  Forgot password?
+                  FORGOT ACCESS KEY?
                 </div>
               )}
 
               <button className="login-button" onClick={tab === "login" ? handleLogin : handleRegister}>
-                {tab === "login" ? "Login →" : "Create Account →"}
+                <span>{tab === "login" ? "INITIATE LOGIN →" : "CREATE IDENTITY →"}</span>
               </button>
 
               {error && <div className="login-error">{error}</div>}
@@ -227,7 +240,7 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
           )}
 
           <div className="admin-link" onClick={() => setIsAdmin(true)}>
-            🔐 Admin Login
+            🔐 ADMIN ACCESS
           </div>
         </div>
       </div>
