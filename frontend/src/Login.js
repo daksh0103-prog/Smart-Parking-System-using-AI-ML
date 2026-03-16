@@ -97,11 +97,15 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
         {/* ══ LEFT PANEL ══ */}
         <div className="login-left">
           <div className="login-brand">
-            <img 
-              src="/parksmart-logo.svg" 
-              alt="ParkSmart" 
-              style={{width:"240px", marginBottom:"8px"}} 
-            />
+            <div className="login-brand-icon-wrap">
+              <span style={{fontSize:"40px", filter:"drop-shadow(0 0 16px rgba(0,255,245,0.7))"}}>🚗</span>
+            </div>
+            <h1>PARK<span className="accent">SMART</span></h1>
+            <div className="login-brand-sub">AI PARKING SYS v2.0<span>_</span></div>
+            <div className="login-status">
+              <div className="login-status-dot" />
+              SYSTEM ONLINE
+            </div>
           </div>
 
           <div className="login-features">
@@ -138,7 +142,10 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
 
         {/* ══ RIGHT PANEL ══ */}
         <div className="login-right">
-          
+          <div className="login-panel-header">
+            <div className="login-panel-title">Access Terminal</div>
+            <div className="login-panel-id">SYS:PARKSMART // NODE:AUTH-01</div>
+          </div>
 
           {tab === "forgot" ? (
             <>
