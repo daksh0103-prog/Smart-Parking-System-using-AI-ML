@@ -9,13 +9,15 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotMsg, setForgotMsg] = useState({ type: "", text: "" });
   const [forgotLoading, setForgotLoading] = useState(false);
 
   const handleLogin = async () => {
     setError("");
-    if (!username || !password) { setError("ERR // MISSING CREDENTIALS"); return; }
+    if (!username || !password) { setError("ERR // ALL FIELDS REQUIRED"); return; }
+    setLoading(true);
     try {
       const res = await fetch(`${API}/login`, {
         method: "POST",
@@ -27,10 +29,12 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
         setLoggedIn(true);
       } else {
         const data = await res.json();
-        setError("ERR // " + (data.detail || "ACCESS DENIED"));
+        setError(data.detail || "ERR // INVALID CREDENTIALS");
       }
     } catch {
-      setError("ERR // SERVER UNREACHABLE");
+      setError("ERR // CANNOT CONNECT TO SERVER");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -38,7 +42,8 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
     setError("");
     if (!username || !email || !password) { setError("ERR // ALL FIELDS REQUIRED"); return; }
     if (!email.includes("@")) { setError("ERR // INVALID EMAIL FORMAT"); return; }
-    if (password.length < 4) { setError("ERR // PASSWORD TOO SHORT"); return; }
+    if (password.length < 4) { setError("ERR // PASSWORD MIN 4 CHARACTERS"); return; }
+    setLoading(true);
     try {
       const res = await fetch(`${API}/register`, {
         method: "POST",
@@ -48,13 +53,15 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
       if (res.ok) {
         setError("");
         setTab("login");
-        alert("IDENTITY CREATED // Proceed to login");
+        alert("Registered successfully! You can now log in.");
       } else {
         const data = await res.json();
-        setError("ERR // " + (data.detail || "REGISTRATION FAILED"));
+        setError(data.detail || "ERR // REGISTRATION FAILED");
       }
     } catch {
-      setError("ERR // SERVER UNREACHABLE");
+      setError("ERR // CANNOT CONNECT TO SERVER");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -71,13 +78,13 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
       });
       const data = await res.json();
       if (res.ok) {
-        setForgotMsg({ type: "success", text: "OK // RESET LINK TRANSMITTED" });
+        setForgotMsg({ type: "success", text: "✓ RESET LINK SENT — CHECK YOUR EMAIL" });
         setForgotEmail("");
       } else {
-        setForgotMsg({ type: "error", text: "ERR // " + (data.detail || "TRANSMISSION FAILED") });
+        setForgotMsg({ type: "error", text: data.detail || "ERR // COULD NOT SEND RESET EMAIL" });
       }
     } catch {
-      setForgotMsg({ type: "error", text: "ERR // SERVER UNREACHABLE" });
+      setForgotMsg({ type: "error", text: "ERR // CANNOT CONNECT TO SERVER" });
     } finally {
       setForgotLoading(false);
     }
@@ -85,165 +92,172 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
 
   return (
     <div className="login-container">
-      {/* Animated background */}
+      {/* Background orbs */}
       <div className="login-bg">
-        <div className="orb orb-1" />
-        <div className="orb orb-2" />
-        <div className="orb orb-3" />
+        <div className="login-orb login-orb1" />
+        <div className="login-orb login-orb2" />
       </div>
 
       <div className="login-wrapper">
+        {/* Corner brackets */}
+        <div className="lg-corner lg-tl" />
+        <div className="lg-corner lg-tr" />
+        <div className="lg-corner lg-bl" />
+        <div className="lg-corner lg-br" />
 
-        {/* ══ LEFT PANEL ══ */}
-        <div className="login-left">
-          <div className="login-brand">
-            <div className="login-brand-icon-wrap">
-              <span style={{fontSize:"40px", filter:"drop-shadow(0 0 16px rgba(0,255,245,0.7))"}}>🚗</span>
-            </div>
-            <h1>PARK<span className="accent">SMART</span></h1>
-            <div className="login-brand-sub">AI PARKING SYS v2.0<span>_</span></div>
-            <div className="login-status">
-              <div className="login-status-dot" />
-              SYSTEM ONLINE
-            </div>
-          </div>
+        {/* Scan line */}
+        <div className="login-scanline" />
 
-          <div className="login-features">
-            <div className="login-feature">
-              <div className="login-feature-icon">🤖</div>
-              <div className="login-feature-text">
-                <strong>DQN AI ENGINE</strong>
-                <span>Reinforcement learning slot optimizer</span>
-              </div>
-            </div>
-            <div className="login-feature">
-              <div className="login-feature-icon">📱</div>
-              <div className="login-feature-text">
-                <strong>QR ACCESS PASS</strong>
-                <span>Encrypted entry code per booking</span>
-              </div>
-            </div>
-            <div className="login-feature">
-              <div className="login-feature-icon">💰</div>
-              <div className="login-feature-text">
-                <strong>AUTO FARE CALC</strong>
-                <span>₹10 per 30 min · live duration</span>
-              </div>
-            </div>
-            <div className="login-feature">
-              <div className="login-feature-icon">🛡️</div>
-              <div className="login-feature-text">
-                <strong>ADMIN CONTROL</strong>
-                <span>Full dashboard · revenue tracking</span>
-              </div>
-            </div>
-          </div>
+        {/* Icon */}
+        <div className="lg-icon-wrap">
+          <div className="lg-icon-ring1" />
+          <div className="lg-icon-ring2" />
+          <div className="lg-icon-bg" />
+          <span className="lg-icon">🚗</span>
         </div>
 
-        {/* ══ RIGHT PANEL ══ */}
-        <div className="login-right">
-          <div className="login-panel-header">
-            <div className="login-panel-title">Access Terminal</div>
-            <div className="login-panel-id">SYS:PARKSMART // NODE:AUTH-01</div>
+        {/* Brand */}
+        <div className="lg-brand">
+          <h1>PARK<span>SMART</span></h1>
+          <div className="lg-badge">
+            <span className="lg-badge-dot" />
+            ACCESS TERMINAL
           </div>
+          <p className="lg-sub">SYS:PARKSMART // NODE:AUTH-01</p>
+        </div>
 
-          {tab === "forgot" ? (
-            <>
-              <div className="forgot-header">
-                <button className="forgot-back" onClick={() => { setTab("login"); setForgotMsg({ type: "", text: "" }); setForgotEmail(""); }}>
-                  ← BACK
-                </button>
-                <div className="forgot-title">RESET ACCESS</div>
-                <div className="forgot-sub">Enter your registered email. A reset link will be transmitted to your inbox.</div>
+        {/* Divider */}
+        <div className="lg-divider" />
+
+        {/* ── FORGOT PASSWORD VIEW ── */}
+        {tab === "forgot" ? (
+          <>
+            <div className="lg-forgot-header">
+              <button
+                className="lg-forgot-back"
+                onClick={() => { setTab("login"); setForgotMsg({ type: "", text: "" }); setForgotEmail(""); }}
+              >
+                ← BACK TO LOGIN
+              </button>
+              <div className="lg-forgot-title">RESET ACCESS KEY</div>
+              <div className="lg-forgot-sub">Enter your registered email to receive a reset link.</div>
+            </div>
+
+            <div className="lg-input-group">
+              <label className="lg-label">// Registered Email</label>
+              <input
+                type="email"
+                className="lg-input"
+                placeholder="Enter email identifier..."
+                value={forgotEmail}
+                onChange={e => setForgotEmail(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleForgot()}
+              />
+            </div>
+
+            <button className="lg-btn" onClick={handleForgot} disabled={forgotLoading}>
+              <span>{forgotLoading ? "TRANSMITTING..." : "SEND RESET LINK →"}</span>
+            </button>
+
+            {forgotMsg.text && (
+              <div className={forgotMsg.type === "success" ? "lg-success" : "lg-error"}>
+                {forgotMsg.text}
               </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Tabs */}
+            <div className="lg-tabs">
+              <button
+                className={`lg-tab ${tab === "login" ? "active" : ""}`}
+                onClick={() => { setTab("login"); setError(""); }}
+              >
+                LOGIN
+              </button>
+              <button
+                className={`lg-tab ${tab === "register" ? "active" : ""}`}
+                onClick={() => { setTab("register"); setError(""); }}
+              >
+                REGISTER
+              </button>
+            </div>
 
-              <div className="input-group">
-                <label className="input-label">Registered Email</label>
+            {/* Username */}
+            <div className="lg-input-group">
+              <label className="lg-label">// Username</label>
+              <input
+                className="lg-input"
+                placeholder="Enter identifier..."
+                value={username}
+                onChange={e => setUsernameInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && (tab === "login" ? handleLogin() : handleRegister())}
+              />
+            </div>
+
+            {/* Email (register only) */}
+            {tab === "register" && (
+              <div className="lg-input-group">
+                <label className="lg-label">// Email</label>
                 <input
                   type="email"
-                  className="login-input"
-                  placeholder="user@domain.com"
-                  value={forgotEmail}
-                  onChange={e => setForgotEmail(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleForgot()}
+                  className="lg-input"
+                  placeholder="Enter email address..."
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleRegister()}
                 />
               </div>
+            )}
 
-              <button className="login-button" onClick={handleForgot} disabled={forgotLoading}>
-                <span>{forgotLoading ? "TRANSMITTING..." : "SEND RESET LINK →"}</span>
-              </button>
+            {/* Password */}
+            <div className="lg-input-group">
+              <label className="lg-label">// Password</label>
+              <input
+                type="password"
+                className="lg-input"
+                placeholder="Enter passkey..."
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && (tab === "login" ? handleLogin() : handleRegister())}
+              />
+            </div>
 
-              {forgotMsg.text && (
-                <div className={forgotMsg.type === "success" ? "login-success" : "login-error"}>
-                  {forgotMsg.text}
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="login-tabs">
-                <button className={`login-tab ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); setError(""); }}>
-                  Login
-                </button>
-                <button className={`login-tab ${tab === "register" ? "active" : ""}`} onClick={() => { setTab("register"); setError(""); }}>
-                  Register
-                </button>
+            {/* Forgot password link */}
+            {tab === "login" && (
+              <div className="lg-forgot-link" onClick={() => { setTab("forgot"); setError(""); }}>
+                FORGOT ACCESS KEY?
               </div>
+            )}
 
-              <div className="input-group">
-                <label className="input-label">Username</label>
-                <input
-                  className="login-input"
-                  placeholder="Enter identifier..."
-                  value={username}
-                  onChange={e => setUsernameInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && (tab === "login" ? handleLogin() : handleRegister())}
-                />
-              </div>
+            {/* Submit button */}
+            <button
+              className="lg-btn"
+              onClick={tab === "login" ? handleLogin : handleRegister}
+              disabled={loading}
+            >
+              <span>
+                {loading
+                  ? "AUTHENTICATING..."
+                  : tab === "login"
+                  ? "INITIATE LOGIN →"
+                  : "CREATE ACCOUNT →"}
+              </span>
+            </button>
 
-              {tab === "register" && (
-                <div className="input-group">
-                  <label className="input-label">Email</label>
-                  <input
-                    type="email"
-                    className="login-input"
-                    placeholder="user@domain.com"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && handleRegister()}
-                  />
-                </div>
-              )}
+            {error && <div className="lg-error">{error}</div>}
+          </>
+        )}
 
-              <div className="input-group">
-                <label className="input-label">Password</label>
-                <input
-                  type="password"
-                  className="login-input"
-                  placeholder="Enter passkey..."
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && (tab === "login" ? handleLogin() : handleRegister())}
-                />
-              </div>
+        {/* Admin link */}
+        <div className="lg-admin-link" onClick={() => setIsAdmin(true)}>
+          🔐 Admin Access
+        </div>
 
-              {tab === "login" && (
-                <div className="forgot-link" onClick={() => { setTab("forgot"); setError(""); }}>
-                  FORGOT ACCESS KEY?
-                </div>
-              )}
-
-              <button className="login-button" onClick={tab === "login" ? handleLogin : handleRegister}>
-                <span>{tab === "login" ? "INITIATE LOGIN →" : "CREATE IDENTITY →"}</span>
-              </button>
-
-              {error && <div className="login-error">{error}</div>}
-            </>
-          )}
-
-          <div className="admin-link" onClick={() => setIsAdmin(true)}>
-            🔐 ADMIN ACCESS
-          </div>
+        {/* Bottom bar */}
+        <div className="lg-bottom">
+          <span className="lg-bottom-dot" />
+          <span className="lg-bottom-text">SYS:PARKSMART // NODE:AUTH-01</span>
         </div>
       </div>
     </div>
