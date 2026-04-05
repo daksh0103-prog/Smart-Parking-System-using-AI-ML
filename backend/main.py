@@ -47,8 +47,8 @@ ALLOWED_ORIGINS = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -195,7 +195,10 @@ def verify_otp(data: VerifyOTPRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="User not found")
     if not db_user.otp_code:
         raise HTTPException(status_code=400, detail="No OTP requested. Please login again.")
-    if datetime.now(timezone.utc) > db_user.otp_expiry:
+    expiry = db_user.otp_expiry
+    if expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) > expiry:
         db_user.otp_code = None
         db_user.otp_expiry = None
         db.commit()
