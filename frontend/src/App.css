@@ -29,7 +29,7 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); colo
 .app-shell { display: flex; min-height: 100vh; }
 
 /* SIDEBAR */
-.sidebar { width: var(--sidebar-w); flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 200; overflow-y: auto; transition: transform 0.28s cubic-bezier(0.4,0,0.2,1); box-shadow: var(--shadow-sm); }
+.sidebar { width: var(--sidebar-w); flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 1100; overflow-y: auto; transition: transform 0.28s cubic-bezier(0.4,0,0.2,1); box-shadow: var(--shadow-sm); }
 .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 24px 20px 20px; border-bottom: 1px solid var(--border); }
 .sidebar-logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; box-shadow: 0 4px 12px rgba(67,97,238,0.3); }
 .sidebar-logo-text { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
@@ -56,7 +56,7 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); colo
 .sidebar-book-btn:hover { background: #3451d1; transform: translateY(-1px); }
 .sidebar-logout { margin: 0 12px 18px; padding: 10px 14px; background: transparent; border: 1px solid var(--border); border-radius: 10px; color: var(--muted); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: left; }
 .sidebar-logout:hover { border-color: var(--red); color: var(--red); }
-.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 199; }
+.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 1099; }
 
 /* MAIN */
 .app-main { flex: 1; margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
@@ -106,8 +106,8 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); colo
 .section-sub { font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 500; }
 
 /* MAP */
-.map-outer { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
-.map-full { position: relative; height: 440px; }
+.map-outer { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-sm); isolation: isolate; }
+.map-full { position: relative; height: 440px; isolation: isolate; }
 .map-full-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .map-loading-overlay { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; background: var(--surface2); color: var(--muted); font-size: 14px; }
 .map-current-area { position: absolute; top: 14px; left: 14px; z-index: 400; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; box-shadow: var(--shadow-md); min-width: 190px; pointer-events: none; }
