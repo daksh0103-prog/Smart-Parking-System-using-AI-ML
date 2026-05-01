@@ -587,6 +587,75 @@ function ChangePasswordModal({ onClose, username }) {
   );
 }
 
+function DeleteAccountModal({ onClose, username, onDeleted }) {
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleDelete = async () => {
+    if (!password) { setErr("Please enter your password to confirm."); return; }
+    setErr(""); setLoading(true);
+    try {
+      const r = await fetch(`${API}/delete-account`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setErr(d.detail || "Failed to delete account."); return; }
+      onDeleted();
+    } catch {
+      setErr("Server error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="nlm-overlay" onClick={onClose}>
+      <div className="nlm-modal" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}>
+        <div className="nlm-header">
+          <div>
+            <div className="nlm-title" style={{ color: "#ff3d5a" }}>🗑️ Delete Account</div>
+            <div className="nlm-sub">This action is permanent and cannot be undone</div>
+          </div>
+          <button type="button" className="nlm-close" onClick={onClose}>✕</button>
+        </div>
+        <div style={{ padding: "8px 0 4px", fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>
+          All your bookings and data will be permanently deleted. Enter your password to confirm.
+        </div>
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em" }}>Confirm Password</div>
+          <input
+            type="password"
+            className="nlm-input"
+            placeholder="Enter your password"
+            value={password}
+            onChange={e => { setPassword(e.target.value); setErr(""); }}
+          />
+        </div>
+        {err && <div className="nlm-err">{err}</div>}
+        <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+          <button type="button" className="nlm-back-btn" onClick={onClose}>Cancel</button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={loading}
+            style={{
+              flex: 1, padding: "12px", borderRadius: 10, border: "none",
+              background: "#ff3d5a", color: "#fff", fontSize: 13, fontWeight: 700,
+              cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1,
+              fontFamily: "inherit",
+            }}
+          >
+            {loading ? "Deleting…" : "🗑️ Delete My Account"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [username, setUsername] = useState("");
@@ -612,6 +681,7 @@ export default function App() {
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [showHelpPanel, setShowHelpPanel] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [showAllNotifs, setShowAllNotifs] = useState(false);
   const [showHelpDetail, setShowHelpDetail] = useState(null); // stores the help item object
   const [searchQuery, setSearchQuery] = useState("");
@@ -811,6 +881,18 @@ export default function App() {
 
       {/* CHANGE PASSWORD MODAL */}
       {showChangePassword && <ChangePasswordModal onClose={() => setShowChangePassword(false)} username={username} />}
+
+      {/* DELETE ACCOUNT MODAL */}
+      {showDeleteAccount && (
+        <DeleteAccountModal
+          onClose={() => setShowDeleteAccount(false)}
+          username={username}
+          onDeleted={() => {
+            setShowDeleteAccount(false);
+            logout();
+          }}
+        />
+      )}
 
       {/* ALL NOTIFICATIONS MODAL */}
       {showAllNotifs && (
@@ -1233,12 +1315,27 @@ export default function App() {
                     padding: "12px 16px", background: "none", border: "none",
                     color: "#ff3d5a", fontSize: 13, fontWeight: 700, cursor: "pointer",
                     textAlign: "left", transition: "background 0.15s", fontFamily: "inherit",
+                    borderBottom: "1px solid var(--border)",
                   }}
                     onMouseEnter={e => e.currentTarget.style.background = "rgba(255,61,90,0.08)"}
                     onMouseLeave={e => e.currentTarget.style.background = "none"}
                   >
                     <span style={{ fontSize: 16 }}>↪</span>
                     Logout
+                  </button>
+                  {/* Delete Account */}
+                  <button onClick={() => { setShowProfileMenu(false); setShowDeleteAccount(true); }} style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 12,
+                    padding: "12px 16px", background: "none", border: "none",
+                    color: "#ff3d5a", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                    textAlign: "left", transition: "background 0.15s", fontFamily: "inherit",
+                    opacity: 0.7,
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,61,90,0.08)"; e.currentTarget.style.opacity = "1"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.opacity = "0.7"; }}
+                  >
+                    <span style={{ fontSize: 14 }}>🗑️</span>
+                    Delete Account
                   </button>
                 </div>
               )}
