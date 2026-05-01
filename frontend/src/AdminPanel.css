@@ -284,6 +284,19 @@
 }
 .unblock-btn:hover { background: rgba(0,230,118,0.2); }
 
+.delete-btn {
+  padding: 5px 12px;
+  background: rgba(255,61,90,0.1);
+  border: 1px solid rgba(255,61,90,0.3);
+  color: #ff3d5a;
+  border-radius: 7px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.delete-btn:hover { background: rgba(255,61,90,0.22); }
+
 /* ── SLOTS GRID ──────────────────────────── */
 .admin-slots-grid {
   display: grid;
