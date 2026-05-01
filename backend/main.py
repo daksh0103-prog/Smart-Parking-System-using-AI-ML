@@ -65,6 +65,7 @@ def run_migrations():
                 ("otp_code", "VARCHAR"),
                 ("otp_expiry", "TIMESTAMP"),
                 ("two_fa_enabled", "BOOLEAN DEFAULT TRUE"),
+                ("face_encoding", "TEXT"),
             ]:
                 try:
                     conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {coltype}"))
@@ -855,3 +856,106 @@ def get_stats(db: Session = Depends(get_db)):
         "active_bookings": active_bookings,
         "total_revenue": total_revenue,
     }
+
+
+# ─────────────────────────────────────────────
+# FACE RECOGNITION — register & login
+# ─────────────────────────────────────────────
+import base64
+import json as _json
+import numpy as np
+
+# face_recognition is optional — graceful fallback if not installed
+try:
+    import face_recognition as fr
+    FACE_RECOGNITION_AVAILABLE = True
+except ImportError:
+    FACE_RECOGNITION_AVAILABLE = False
+
+
+def _decode_image(data_url: str):
+    """Convert base64 data-URL → numpy RGB image array."""
+    if "," in data_url:
+        data_url = data_url.split(",", 1)[1]
+    img_bytes = base64.b64decode(data_url)
+    from PIL import Image
+    import io as _io
+    img = Image.open(_io.BytesIO(img_bytes)).convert("RGB")
+    return np.array(img)
+
+
+class FaceRegisterRequest(BaseModel):
+    username: str
+    image: str   # base64 data-URL
+
+class FaceLoginRequest(BaseModel):
+    image: str   # base64 data-URL
+
+
+@app.post("/face-register")
+def face_register(data: FaceRegisterRequest, db: Session = Depends(get_db)):
+    if not FACE_RECOGNITION_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Face recognition not available on this server.")
+
+    user = db.query(models.User).filter(models.User.username == data.username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found. Please log in first.")
+
+    img_array = _decode_image(data.image)
+    face_locations = fr.face_locations(img_array)
+    if not face_locations:
+        raise HTTPException(status_code=400, detail="No face detected. Make sure your face is clearly visible.")
+
+    encodings = fr.face_encodings(img_array, face_locations)
+    if not encodings:
+        raise HTTPException(status_code=400, detail="Could not encode face. Please try again.")
+
+    user.face_encoding = _json.dumps(encodings[0].tolist())
+    db.commit()
+    return {"message": "Face registered successfully!"}
+
+
+@app.post("/face-login")
+def face_login(data: FaceLoginRequest, db: Session = Depends(get_db)):
+    if not FACE_RECOGNITION_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Face recognition not available on this server.")
+
+    img_array = _decode_image(data.image)
+    face_locations = fr.face_locations(img_array)
+    if not face_locations:
+        raise HTTPException(status_code=400, detail="No face detected. Please try again.")
+
+    encodings = fr.face_encodings(img_array, face_locations)
+    if not encodings:
+        raise HTTPException(status_code=400, detail="Could not read face. Please try again.")
+
+    incoming = encodings[0]
+
+    # Compare against all users who have a registered face
+    users_with_face = db.query(models.User).filter(models.User.face_encoding.isnot(None)).all()
+    if not users_with_face:
+        raise HTTPException(status_code=404, detail="No faces registered yet.")
+
+    for user in users_with_face:
+        stored = np.array(_json.loads(user.face_encoding))
+        match = fr.compare_faces([stored], incoming, tolerance=0.5)
+        if match[0]:
+            return {"username": user.username, "message": "Face matched!"}
+
+    raise HTTPException(status_code=401, detail="Face not recognised. Please use OTP login or try again.")
+
+
+@app.post("/face-migration")
+def face_migration(db: Session = Depends(get_db)):
+    """Add face_encoding column if it doesn't exist (safe migration)."""
+    try:
+        with engine.connect() as conn:
+            from sqlalchemy import text
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN face_encoding TEXT"))
+                conn.commit()
+            except Exception:
+                pass  # Already exists
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"message": "Migration done"}
