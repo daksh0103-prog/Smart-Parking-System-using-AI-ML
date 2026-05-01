@@ -640,6 +640,71 @@ def admin_toggle_block(data: ToggleBlockRequest, db: Session = Depends(get_db)):
 
 
 # ─────────────────────────────────────────────
+# ADMIN — delete user
+# ─────────────────────────────────────────────
+class DeleteUserRequest(BaseModel):
+    user_id: int
+
+@app.delete("/admin/delete-user")
+def admin_delete_user(data: DeleteUserRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == data.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    # Release any active bookings first
+    active = db.query(models.Booking).filter(
+        models.Booking.user_id == user.id,
+        models.Booking.status == "active"
+    ).all()
+    for b in active:
+        slot = db.query(models.ParkingSlot).filter(
+            models.ParkingSlot.slot_number == b.slot_number
+        ).first()
+        if slot:
+            slot.is_occupied = False
+        b.status = "cancelled"
+        b.released_at = datetime.now(timezone.utc)
+    # Delete all bookings of the user
+    db.query(models.Booking).filter(models.Booking.user_id == user.id).delete()
+    db.delete(user)
+    db.commit()
+    return {"message": f"User deleted successfully"}
+
+
+# ─────────────────────────────────────────────
+# USER — delete own account
+# ─────────────────────────────────────────────
+class DeleteAccountRequest(BaseModel):
+    username: str
+    password: str
+
+@app.delete("/delete-account")
+def delete_account(data: DeleteAccountRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == data.username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not pwd_context.verify(data.password, user.password):
+        raise HTTPException(status_code=400, detail="Wrong password")
+    # Release any active bookings first
+    active = db.query(models.Booking).filter(
+        models.Booking.user_id == user.id,
+        models.Booking.status == "active"
+    ).all()
+    for b in active:
+        slot = db.query(models.ParkingSlot).filter(
+            models.ParkingSlot.slot_number == b.slot_number
+        ).first()
+        if slot:
+            slot.is_occupied = False
+        b.status = "cancelled"
+        b.released_at = datetime.now(timezone.utc)
+    # Delete all bookings then user
+    db.query(models.Booking).filter(models.Booking.user_id == user.id).delete()
+    db.delete(user)
+    db.commit()
+    return {"message": "Account deleted successfully"}
+
+
+# ─────────────────────────────────────────────
 # ADMIN — Dynamic Slot Management
 # ─────────────────────────────────────────────
 
