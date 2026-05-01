@@ -20,7 +20,7 @@ function Modal({ title, onClose, children }) {
 }
 
 // ── MAIN LOGIN ────────────────────────────────────────────────
-function Login({ setLoggedIn, setUsername, setIsAdmin }) {
+function Login({ setLoggedIn, setUsername, setIsAdmin, setIsGoogleUser }) {
   const [tab, setTab]                 = useState("login");
   const [username, setUsernameInput]  = useState("");
   const [email, setEmail]             = useState("");
@@ -122,7 +122,7 @@ function Login({ setLoggedIn, setUsername, setIsAdmin }) {
         body: JSON.stringify({ email: info.email, name: info.name || info.email.split("@")[0], sub: info.sub }),
       });
       const d = await res.json();
-      if (res.ok) { setUsername(d.username); setLoggedIn(true); }
+      if (res.ok) { setUsername(d.username); setLoggedIn(true); if (setIsGoogleUser) setIsGoogleUser(true); }
       else { setError(d.detail || "Google sign-in failed."); }
     } catch { setError("Google sign-in failed. Please try again."); }
     finally { setLoading(false); }
