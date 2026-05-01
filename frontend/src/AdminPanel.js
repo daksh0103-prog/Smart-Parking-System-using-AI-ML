@@ -88,6 +88,24 @@ export default function AdminPanel({ onLogout }) {
     } catch { showMsg("error", "Server error"); }
   };
 
+  const deleteUser = async (userId, username) => {
+    if (!window.confirm(`Are you sure you want to permanently delete user "${username}"? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`${API}/admin/delete-user`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId }),
+      });
+      if (res.ok) {
+        showMsg("success", `✓ User "${username}" deleted successfully`);
+        fetchAll();
+      } else {
+        const data = await res.json();
+        showMsg("error", data.detail || "Delete failed");
+      }
+    } catch { showMsg("error", "Server error"); }
+  };
+
   const activeBookings = allBookings.filter(b => b.status === "active");
   const completedBookings = allBookings.filter(b => b.status === "completed");
 
@@ -308,12 +326,20 @@ export default function AdminPanel({ onLogout }) {
                         </span>
                       </td>
                       <td>
-                        <button
-                          className={u.is_blocked ? "unblock-btn" : "block-btn"}
-                          onClick={() => toggleBlock(u.id, u.is_blocked)}
-                        >
-                          {u.is_blocked ? "Unblock" : "Block"}
-                        </button>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            className={u.is_blocked ? "unblock-btn" : "block-btn"}
+                            onClick={() => toggleBlock(u.id, u.is_blocked)}
+                          >
+                            {u.is_blocked ? "Unblock" : "Block"}
+                          </button>
+                          <button
+                            className="delete-btn"
+                            onClick={() => deleteUser(u.id, u.username)}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
