@@ -860,28 +860,48 @@ def get_stats(db: Session = Depends(get_db)):
 
 # ─────────────────────────────────────────────
 # FACE RECOGNITION — register & login
+# Uses DeepFace (no dlib/cmake needed)
 # ─────────────────────────────────────────────
 import base64
 import json as _json
 import numpy as np
+import io as _io
+import tempfile, os
 
-# face_recognition is optional — graceful fallback if not installed
 try:
-    import face_recognition as fr
+    from deepface import DeepFace
+    from PIL import Image
     FACE_RECOGNITION_AVAILABLE = True
 except ImportError:
     FACE_RECOGNITION_AVAILABLE = False
 
 
-def _decode_image(data_url: str):
-    """Convert base64 data-URL → numpy RGB image array."""
+def _save_temp_image(data_url: str) -> str:
+    """Decode base64 data-URL, save as temp JPEG, return file path."""
     if "," in data_url:
         data_url = data_url.split(",", 1)[1]
     img_bytes = base64.b64decode(data_url)
-    from PIL import Image
-    import io as _io
     img = Image.open(_io.BytesIO(img_bytes)).convert("RGB")
-    return np.array(img)
+    tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+    img.save(tmp.name, "JPEG")
+    tmp.close()
+    return tmp.name
+
+
+def _get_embedding(img_path: str) -> list:
+    """Return 128-d face embedding using DeepFace (Facenet model)."""
+    result = DeepFace.represent(
+        img_path=img_path,
+        model_name="Facenet",
+        enforce_detection=True,
+        detector_backend="opencv",
+    )
+    return result[0]["embedding"]
+
+
+def _cosine_similarity(a: list, b: list) -> float:
+    va, vb = np.array(a), np.array(b)
+    return float(np.dot(va, vb) / (np.linalg.norm(va) * np.linalg.norm(vb) + 1e-9))
 
 
 class FaceRegisterRequest(BaseModel):
@@ -901,16 +921,17 @@ def face_register(data: FaceRegisterRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found. Please log in first.")
 
-    img_array = _decode_image(data.image)
-    face_locations = fr.face_locations(img_array)
-    if not face_locations:
-        raise HTTPException(status_code=400, detail="No face detected. Make sure your face is clearly visible.")
+    tmp_path = None
+    try:
+        tmp_path = _save_temp_image(data.image)
+        embedding = _get_embedding(tmp_path)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"No face detected or could not encode. Please try again. ({str(e)})")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
-    encodings = fr.face_encodings(img_array, face_locations)
-    if not encodings:
-        raise HTTPException(status_code=400, detail="Could not encode face. Please try again.")
-
-    user.face_encoding = _json.dumps(encodings[0].tolist())
+    user.face_encoding = _json.dumps(embedding)
     db.commit()
     return {"message": "Face registered successfully!"}
 
@@ -920,27 +941,32 @@ def face_login(data: FaceLoginRequest, db: Session = Depends(get_db)):
     if not FACE_RECOGNITION_AVAILABLE:
         raise HTTPException(status_code=503, detail="Face recognition not available on this server.")
 
-    img_array = _decode_image(data.image)
-    face_locations = fr.face_locations(img_array)
-    if not face_locations:
-        raise HTTPException(status_code=400, detail="No face detected. Please try again.")
+    tmp_path = None
+    try:
+        tmp_path = _save_temp_image(data.image)
+        incoming = _get_embedding(tmp_path)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"No face detected. Please try again. ({str(e)})")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
-    encodings = fr.face_encodings(img_array, face_locations)
-    if not encodings:
-        raise HTTPException(status_code=400, detail="Could not read face. Please try again.")
-
-    incoming = encodings[0]
-
-    # Compare against all users who have a registered face
     users_with_face = db.query(models.User).filter(models.User.face_encoding.isnot(None)).all()
     if not users_with_face:
         raise HTTPException(status_code=404, detail="No faces registered yet.")
 
+    THRESHOLD = 0.80   # cosine similarity — tune if needed
+    best_user, best_score = None, 0.0
+
     for user in users_with_face:
-        stored = np.array(_json.loads(user.face_encoding))
-        match = fr.compare_faces([stored], incoming, tolerance=0.5)
-        if match[0]:
-            return {"username": user.username, "message": "Face matched!"}
+        stored = _json.loads(user.face_encoding)
+        score = _cosine_similarity(stored, incoming)
+        if score > best_score:
+            best_score = score
+            best_user = user
+
+    if best_user and best_score >= THRESHOLD:
+        return {"username": best_user.username, "message": "Face matched!"}
 
     raise HTTPException(status_code=401, detail="Face not recognised. Please use OTP login or try again.")
 
