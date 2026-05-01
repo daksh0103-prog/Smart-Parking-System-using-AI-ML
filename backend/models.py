@@ -21,6 +21,7 @@ class User(Base):
     otp_code = Column(String, nullable=True)
     otp_expiry = Column(DateTime, nullable=True)
     two_fa_enabled = Column(Boolean, default=True)
+    face_encoding = Column(String, nullable=True)   # JSON array of 128 floats
     bookings = relationship("Booking", back_populates="user")
 
 
