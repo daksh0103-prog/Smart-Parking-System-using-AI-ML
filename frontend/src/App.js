@@ -3,6 +3,7 @@ import "./App.css";
 import parksmartLogo from "./parksmart-logo.png";
 import Login from "./Login";
 import AdminLogin from "./AdminLogin";
+import FaceLoginModal from "./FaceLoginModal";
 import AdminPanel from "./AdminPanel";
 import ResetPassword from "./ResetPassword";
 
@@ -698,6 +699,7 @@ export default function App() {
   const [showHelpPanel, setShowHelpPanel] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [showRegisterFace, setShowRegisterFace] = useState(false);
   const [showAllNotifs, setShowAllNotifs] = useState(false);
   const [showHelpDetail, setShowHelpDetail] = useState(null); // stores the help item object
   const [searchQuery, setSearchQuery] = useState("");
@@ -897,6 +899,14 @@ export default function App() {
 
       {/* CHANGE PASSWORD MODAL */}
       {showChangePassword && <ChangePasswordModal onClose={() => setShowChangePassword(false)} username={username} />}
+      {showRegisterFace && (
+        <FaceLoginModal
+          mode="register"
+          username={username}
+          onSuccess={() => { setShowRegisterFace(false); }}
+          onClose={() => setShowRegisterFace(false)}
+        />
+      )}
 
       {/* DELETE ACCOUNT MODAL */}
       {showDeleteAccount && (
@@ -1310,6 +1320,7 @@ export default function App() {
                     { icon: "📋", label: "Booking History", action: () => { setTab("history"); setShowProfileMenu(false); } },
                     { icon: "⚡", label: "Active Booking", action: () => { setTab("active"); setShowProfileMenu(false); } },
                     { icon: "🔐", label: "Change Password", action: () => { setShowProfileMenu(false); setShowChangePassword(true); } },
+                    { icon: "🤳", label: "Register Face", action: () => { setShowProfileMenu(false); setShowRegisterFace(true); } },
                   ].map((item, i) => (
                     <button key={i} onClick={item.action} style={{
                       width: "100%", display: "flex", alignItems: "center", gap: 12,
