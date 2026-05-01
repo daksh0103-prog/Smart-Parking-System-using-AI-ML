@@ -587,19 +587,23 @@ function ChangePasswordModal({ onClose, username }) {
   );
 }
 
-function DeleteAccountModal({ onClose, username, onDeleted }) {
+function DeleteAccountModal({ onClose, username, isGoogleUser, onDeleted }) {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
-    if (!password) { setErr("Please enter your password to confirm."); return; }
+    if (!isGoogleUser && !password) { setErr("Please enter your password to confirm."); return; }
     setErr(""); setLoading(true);
     try {
       const r = await fetch(`${API}/delete-account`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+          username,
+          password: isGoogleUser ? "" : password,
+          is_google: isGoogleUser,
+        }),
       });
       const d = await r.json();
       if (!r.ok) { setErr(d.detail || "Failed to delete account."); return; }
@@ -622,18 +626,29 @@ function DeleteAccountModal({ onClose, username, onDeleted }) {
           <button type="button" className="nlm-close" onClick={onClose}>✕</button>
         </div>
         <div style={{ padding: "8px 0 4px", fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>
-          All your bookings and data will be permanently deleted. Enter your password to confirm.
+          All your bookings and data will be permanently deleted.
+          {isGoogleUser
+            ? " Since you signed in with Google, no password is required."
+            : " Enter your password to confirm."}
         </div>
-        <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em" }}>Confirm Password</div>
-          <input
-            type="password"
-            className="nlm-input"
-            placeholder="Enter your password"
-            value={password}
-            onChange={e => { setPassword(e.target.value); setErr(""); }}
-          />
-        </div>
+        {!isGoogleUser && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em" }}>Confirm Password</div>
+            <input
+              type="password"
+              className="nlm-input"
+              placeholder="Enter your password"
+              value={password}
+              onChange={e => { setPassword(e.target.value); setErr(""); }}
+            />
+          </div>
+        )}
+        {isGoogleUser && (
+          <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "rgba(255,61,90,0.07)", borderRadius: 10, border: "1px solid rgba(255,61,90,0.2)" }}>
+            <span style={{ fontSize: 18 }}>🔗</span>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>Signed in via <strong style={{ color: "var(--text)" }}>Google</strong> — no password needed</span>
+          </div>
+        )}
         {err && <div className="nlm-err">{err}</div>}
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           <button type="button" className="nlm-back-btn" onClick={onClose}>Cancel</button>
@@ -663,6 +678,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isGoogleUser, setIsGoogleUser] = useState(false);
 
   const [slots, setSlots] = useState([]);
   const [recommended, setRecommended] = useState(null);
@@ -837,7 +853,7 @@ export default function App() {
     } catch {}
   };
 
-  const logout = () => { setLoggedIn(false); setUsername(""); setIsAdmin(false); setShowProfileMenu(false); setNotifications(DEFAULT_NOTIFS); };
+  const logout = () => { setLoggedIn(false); setUsername(""); setIsAdmin(false); setShowProfileMenu(false); setNotifications(DEFAULT_NOTIFS); setIsGoogleUser(false); };
   const unreadCount = notifications.filter(n => !n.read).length;
   const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   const updateNotif = (id) => setNotifications(prev => prev.map(x => x.id === id ? { ...x, read: true } : x));
@@ -851,7 +867,7 @@ export default function App() {
   if (isAdmin) return <AdminPanel onLogout={logout} />;
   if (showAdminLogin) return <AdminLogin onLogin={() => { setShowAdminLogin(false); setIsAdmin(true); }} />;
   if (window.location.pathname === "/reset-password" || window.location.search.includes("token=")) return <ResetPassword />;
-  if (!loggedIn) return <Login setLoggedIn={setLoggedIn} setUsername={setUsername} setIsAdmin={() => setShowAdminLogin(true)} />;
+  if (!loggedIn) return <Login setLoggedIn={setLoggedIn} setUsername={setUsername} setIsAdmin={() => setShowAdminLogin(true)} setIsGoogleUser={setIsGoogleUser} />;
 
   const navItems = [
     { id: "dashboard", icon: "⊞", label: "Dashboard" },
@@ -887,6 +903,7 @@ export default function App() {
         <DeleteAccountModal
           onClose={() => setShowDeleteAccount(false)}
           username={username}
+          isGoogleUser={isGoogleUser}
           onDeleted={() => {
             setShowDeleteAccount(false);
             logout();
