@@ -675,15 +675,22 @@ def admin_delete_user(data: DeleteUserRequest, db: Session = Depends(get_db)):
 # ─────────────────────────────────────────────
 class DeleteAccountRequest(BaseModel):
     username: str
-    password: str
+    password: str = ""
+    is_google: bool = False
 
 @app.delete("/delete-account")
 def delete_account(data: DeleteAccountRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.username == data.username).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    if not pwd_context.verify(data.password, user.password):
-        raise HTTPException(status_code=400, detail="Wrong password")
+
+    # Google OAuth users — no password needed, just confirm via is_google flag
+    if not data.is_google:
+        if not data.password:
+            raise HTTPException(status_code=400, detail="Password is required")
+        if not pwd_context.verify(data.password, user.password):
+            raise HTTPException(status_code=400, detail="Wrong password")
+
     # Release any active bookings first
     active = db.query(models.Booking).filter(
         models.Booking.user_id == user.id,
