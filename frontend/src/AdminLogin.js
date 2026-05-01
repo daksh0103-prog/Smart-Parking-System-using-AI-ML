@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import "./AdminLogin.css";
 
-const ADMIN_USERNAME = "daksh";
-const ADMIN_PASSWORD = "01032006";
+const ADMIN_USERNAME = "admin";
+const ADMIN_PASSWORD = "admin@123";
 
 export default function AdminLogin({ onLogin }) {
   const [username, setUsername] = useState("");
