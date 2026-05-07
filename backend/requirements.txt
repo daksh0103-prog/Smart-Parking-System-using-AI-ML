@@ -12,7 +12,8 @@ python-dotenv==1.0.1
 pydantic==2.7.1
 pillow>=10.0.0
 torch>=2.0.0,<3.0.0
-numpy==1.23.5
+numpy>=1.26.0,<2.0.0
+pandas>=2.0.0
 resend==2.0.0
 deepface==0.0.99
 opencv-python-headless==4.9.0.80
