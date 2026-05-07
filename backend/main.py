@@ -65,7 +65,6 @@ def run_migrations():
                 ("otp_code", "VARCHAR"),
                 ("otp_expiry", "TIMESTAMP"),
                 ("two_fa_enabled", "BOOLEAN DEFAULT TRUE"),
-                ("face_encoding", "TEXT"),
             ]:
                 try:
                     conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {coltype}"))
@@ -311,10 +310,7 @@ def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.reset_token == data.token).first()
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired reset link.")
-    expiry = user.reset_token_expiry
-    if expiry and expiry.tzinfo is None:
-        expiry = expiry.replace(tzinfo=timezone.utc)
-    if not expiry or datetime.now(timezone.utc) > expiry:
+    if not user.reset_token_expiry or datetime.now(timezone.utc) > user.reset_token_expiry:
         raise HTTPException(status_code=400, detail="Reset link has expired. Please request a new one.")
     if len(data.new_password) < 4:
         raise HTTPException(status_code=400, detail="Password must be at least 4 characters.")
@@ -859,138 +855,3 @@ def get_stats(db: Session = Depends(get_db)):
         "active_bookings": active_bookings,
         "total_revenue": total_revenue,
     }
-
-
-# ─────────────────────────────────────────────
-# FACE RECOGNITION — register & login
-# Uses DeepFace (no dlib/cmake needed)
-# ─────────────────────────────────────────────
-import base64
-import json as _json
-import numpy as np
-import io as _io
-import tempfile, os
-
-try:
-    from deepface import DeepFace
-    from PIL import Image
-    FACE_RECOGNITION_AVAILABLE = True
-    # Preload Facenet model at startup so first face-register/login isn't slow
-    try:
-        DeepFace.build_model("Facenet")
-        print("✅ DeepFace Facenet model preloaded")
-    except Exception as _e:
-        print(f"⚠️ DeepFace preload warning: {_e}")
-except ImportError:
-    FACE_RECOGNITION_AVAILABLE = False
-
-
-def _save_temp_image(data_url: str) -> str:
-    """Decode base64 data-URL, save as temp JPEG, return file path."""
-    if "," in data_url:
-        data_url = data_url.split(",", 1)[1]
-    img_bytes = base64.b64decode(data_url)
-    img = Image.open(_io.BytesIO(img_bytes)).convert("RGB")
-    tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
-    img.save(tmp.name, "JPEG")
-    tmp.close()
-    return tmp.name
-
-
-def _get_embedding(img_path: str) -> list:
-    """Return 128-d face embedding using DeepFace (Facenet model)."""
-    result = DeepFace.represent(
-        img_path=img_path,
-        model_name="Facenet",
-        enforce_detection=True,
-        detector_backend="opencv",
-    )
-    return result[0]["embedding"]
-
-
-def _cosine_similarity(a: list, b: list) -> float:
-    va, vb = np.array(a), np.array(b)
-    return float(np.dot(va, vb) / (np.linalg.norm(va) * np.linalg.norm(vb) + 1e-9))
-
-
-class FaceRegisterRequest(BaseModel):
-    username: str
-    image: str   # base64 data-URL
-
-class FaceLoginRequest(BaseModel):
-    image: str   # base64 data-URL
-
-
-@app.post("/face-register")
-def face_register(data: FaceRegisterRequest, db: Session = Depends(get_db)):
-    if not FACE_RECOGNITION_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Face recognition not available on this server.")
-
-    user = db.query(models.User).filter(models.User.username == data.username).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found. Please log in first.")
-
-    tmp_path = None
-    try:
-        tmp_path = _save_temp_image(data.image)
-        embedding = _get_embedding(tmp_path)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"No face detected or could not encode. Please try again. ({str(e)})")
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            os.remove(tmp_path)
-
-    user.face_encoding = _json.dumps(embedding)
-    db.commit()
-    return {"message": "Face registered successfully!"}
-
-
-@app.post("/face-login")
-def face_login(data: FaceLoginRequest, db: Session = Depends(get_db)):
-    if not FACE_RECOGNITION_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Face recognition not available on this server.")
-
-    tmp_path = None
-    try:
-        tmp_path = _save_temp_image(data.image)
-        incoming = _get_embedding(tmp_path)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"No face detected. Please try again. ({str(e)})")
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            os.remove(tmp_path)
-
-    users_with_face = db.query(models.User).filter(models.User.face_encoding.isnot(None)).all()
-    if not users_with_face:
-        raise HTTPException(status_code=404, detail="No faces registered yet.")
-
-    THRESHOLD = 0.80   # cosine similarity — tune if needed
-    best_user, best_score = None, 0.0
-
-    for user in users_with_face:
-        stored = _json.loads(user.face_encoding)
-        score = _cosine_similarity(stored, incoming)
-        if score > best_score:
-            best_score = score
-            best_user = user
-
-    if best_user and best_score >= THRESHOLD:
-        return {"username": best_user.username, "message": "Face matched!"}
-
-    raise HTTPException(status_code=401, detail="Face not recognised. Please use OTP login or try again.")
-
-
-@app.post("/face-migration")
-def face_migration(db: Session = Depends(get_db)):
-    """Add face_encoding column if it doesn't exist (safe migration)."""
-    try:
-        with engine.connect() as conn:
-            from sqlalchemy import text
-            try:
-                conn.execute(text("ALTER TABLE users ADD COLUMN face_encoding TEXT"))
-                conn.commit()
-            except Exception:
-                pass  # Already exists
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    return {"message": "Migration done"}
