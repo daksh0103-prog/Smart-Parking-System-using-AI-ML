@@ -212,7 +212,12 @@ def verify_otp(data: VerifyOTPRequest, db: Session = Depends(get_db)):
     db_user.otp_expiry = None
     db.commit()
     migrate_slots(db)
-    return {"message": "Login successful", "username": db_user.username, "user_id": db_user.id}
+    return {
+        "message": "Login successful",
+        "username": db_user.username,
+        "user_id": db_user.id,
+        "face_registered": db_user.face_encoding is not None,
+    }
 
 
 # ─────────────────────────────────────────────
@@ -250,7 +255,12 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
         if existing.is_blocked:
             raise HTTPException(status_code=403, detail="Your account has been blocked. Contact admin.")
         # Login — return existing username
-        return {"message": "Login successful", "username": existing.username, "user_id": existing.id}
+        return {
+            "message": "Login successful",
+            "username": existing.username,
+            "user_id": existing.id,
+            "face_registered": existing.face_encoding is not None,
+        }
 
     # New user — register automatically
     google_username = data.name.replace(" ", "_").lower()
@@ -268,7 +278,12 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
     db.refresh(new_user)
     migrate_slots(db)
     threading.Thread(target=send_welcome_email, args=(data.email, google_username), daemon=True).start()
-    return {"message": "Registered successfully", "username": google_username, "user_id": new_user.id}
+    return {
+        "message": "Registered successfully",
+        "username": google_username,
+        "user_id": new_user.id,
+        "face_registered": False,
+    }
 
 
 # ─────────────────────────────────────────────
