@@ -212,12 +212,7 @@ def verify_otp(data: VerifyOTPRequest, db: Session = Depends(get_db)):
     db_user.otp_expiry = None
     db.commit()
     migrate_slots(db)
-    return {
-        "message": "Login successful",
-        "username": db_user.username,
-        "user_id": db_user.id,
-        "face_registered": db_user.face_encoding is not None,
-    }
+    return {"message": "Login successful", "username": db_user.username, "user_id": db_user.id}
 
 
 # ─────────────────────────────────────────────
@@ -255,12 +250,7 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
         if existing.is_blocked:
             raise HTTPException(status_code=403, detail="Your account has been blocked. Contact admin.")
         # Login — return existing username
-        return {
-            "message": "Login successful",
-            "username": existing.username,
-            "user_id": existing.id,
-            "face_registered": existing.face_encoding is not None,
-        }
+        return {"message": "Login successful", "username": existing.username, "user_id": existing.id}
 
     # New user — register automatically
     google_username = data.name.replace(" ", "_").lower()
@@ -278,12 +268,7 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
     db.refresh(new_user)
     migrate_slots(db)
     threading.Thread(target=send_welcome_email, args=(data.email, google_username), daemon=True).start()
-    return {
-        "message": "Registered successfully",
-        "username": google_username,
-        "user_id": new_user.id,
-        "face_registered": False,
-    }
+    return {"message": "Registered successfully", "username": google_username, "user_id": new_user.id}
 
 
 # ─────────────────────────────────────────────
@@ -326,7 +311,10 @@ def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.reset_token == data.token).first()
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired reset link.")
-    if not user.reset_token_expiry or datetime.now(timezone.utc) > user.reset_token_expiry:
+    expiry = user.reset_token_expiry
+    if expiry and expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
+    if not expiry or datetime.now(timezone.utc) > expiry:
         raise HTTPException(status_code=400, detail="Reset link has expired. Please request a new one.")
     if len(data.new_password) < 4:
         raise HTTPException(status_code=400, detail="Password must be at least 4 characters.")
@@ -887,6 +875,12 @@ try:
     from deepface import DeepFace
     from PIL import Image
     FACE_RECOGNITION_AVAILABLE = True
+    # Preload Facenet model at startup so first face-register/login isn't slow
+    try:
+        DeepFace.build_model("Facenet")
+        print("✅ DeepFace Facenet model preloaded")
+    except Exception as _e:
+        print(f"⚠️ DeepFace preload warning: {_e}")
 except ImportError:
     FACE_RECOGNITION_AVAILABLE = False
 
