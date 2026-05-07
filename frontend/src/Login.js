@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./Login.css";
 import parksmartLogo from "./parksmart-logo.png";
-import FaceLoginModal from "./FaceLoginModal";
 
 const API = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
@@ -40,8 +39,6 @@ function Login({ setLoggedIn, setUsername, setIsAdmin, setIsGoogleUser }) {
   const [otpLoading, setOtpLoading]   = useState(false);
   const [otpError, setOtpError]       = useState("");
   const [otpTimer, setOtpTimer]       = useState(300); // 5 min countdown
-  const [faceModal, setFaceModal]     = useState(null); // null | "login" | "register"
-  const [showFacePrompt, setShowFacePrompt] = useState(false);
   const otpRefs                       = useRef([]);
   const googleBtnRef                  = useRef(null);
 
@@ -125,15 +122,7 @@ function Login({ setLoggedIn, setUsername, setIsAdmin, setIsGoogleUser }) {
         body: JSON.stringify({ email: info.email, name: info.name || info.email.split("@")[0], sub: info.sub }),
       });
       const d = await res.json();
-      if (res.ok) {
-        setUsername(d.username);
-        if (setIsGoogleUser) setIsGoogleUser(true);
-        if (!d.face_registered) {
-          setShowFacePrompt(true);
-        } else {
-          setLoggedIn(true);
-        }
-      }
+      if (res.ok) { setUsername(d.username); setLoggedIn(true); if (setIsGoogleUser) setIsGoogleUser(true); }
       else { setError(d.detail || "Google sign-in failed."); }
     } catch { setError("Google sign-in failed. Please try again."); }
     finally { setLoading(false); }
@@ -202,14 +191,7 @@ function Login({ setLoggedIn, setUsername, setIsAdmin, setIsGoogleUser }) {
         body: JSON.stringify({ username, otp }),
       });
       const data = await res.json();
-      if (res.ok) {
-        setUsername(username);
-        if (!data.face_registered) {
-          setShowFacePrompt(true);
-        } else {
-          setLoggedIn(true);
-        }
-      }
+      if (res.ok) { setUsername(username); setLoggedIn(true); }
       else { setOtpError(data.detail || "Invalid OTP."); }
     } catch { setOtpError("Server error. Please try again."); }
     finally { setOtpLoading(false); }
@@ -271,69 +253,6 @@ function Login({ setLoggedIn, setUsername, setIsAdmin, setIsGoogleUser }) {
     <div className="lp-root">
 
       {/* ── MODALS ── */}
-      {/* ── FACE MODAL ── */}
-      {faceModal && (
-        <FaceLoginModal
-          mode={faceModal}
-          username={username}
-          onSuccess={(uname) => {
-            if (faceModal === "login") {
-              setUsername(uname);
-              setLoggedIn(true);
-            } else {
-              setFaceModal(null);
-              setLoggedIn(true); // proceed to dashboard after face register
-            }
-          }}
-          onClose={() => { setFaceModal(null); setLoggedIn(true); }} // skip on close
-        />
-      )}
-
-      {/* ── FACE REGISTRATION PROMPT (after login) ── */}
-      {showFacePrompt && (
-        <div style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
-          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
-        }}>
-          <div style={{
-            background: "var(--surface, #1e1e2e)", border: "1.5px solid var(--border, #333)",
-            borderRadius: 18, padding: "36px 32px", maxWidth: 400, width: "90%",
-            textAlign: "center", boxShadow: "0 8px 40px rgba(0,0,0,0.4)",
-          }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>🧠</div>
-            <h2 style={{ margin: "0 0 8px", fontSize: 20, color: "var(--text, #fff)" }}>
-              Enable Face Login?
-            </h2>
-            <p style={{ color: "var(--text-muted, #aaa)", fontSize: 14, marginBottom: 28, lineHeight: 1.6 }}>
-              Register your face now for faster, one-tap login next time. Takes just a few seconds!
-            </p>
-            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-              <button
-                onClick={() => { setShowFacePrompt(false); setFaceModal("register"); }}
-                style={{
-                  padding: "10px 24px", borderRadius: 10, border: "none",
-                  background: "var(--accent, #6c63ff)", color: "#fff",
-                  fontWeight: 600, fontSize: 14, cursor: "pointer",
-                }}
-              >
-                📷 Register Face
-              </button>
-              <button
-                onClick={() => { setShowFacePrompt(false); setLoggedIn(true); }}
-                style={{
-                  padding: "10px 24px", borderRadius: 10,
-                  border: "1.5px solid var(--border, #444)",
-                  background: "transparent", color: "var(--text-muted, #aaa)",
-                  fontSize: 14, cursor: "pointer",
-                }}
-              >
-                Skip for now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {modal === "privacy" && (
         <Modal title="🔒 Privacy Policy" onClose={() => setModal(null)}>
           <p className="lp-modal-updated">Last updated: April 2025</p>
@@ -577,11 +496,6 @@ function Login({ setLoggedIn, setUsername, setIsAdmin, setIsGoogleUser }) {
                       <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
                       Apple
                     </button>
-                    {/* FACE LOGIN */}
-                    <button className="lp-social-btn" onClick={() => setFaceModal("login")}
-                      title="Login with your face">
-                      🤳 Face
-                    </button>
                   </div>
                   <div className="lp-divider"><span>OR USE EMAIL</span></div>
                 </>
@@ -641,15 +555,6 @@ function Login({ setLoggedIn, setUsername, setIsAdmin, setIsGoogleUser }) {
                   {tab === "login" ? "Create an account →" : "Sign in →"}
                 </button>
               </p>
-
-              {tab === "login" && (
-                <p style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
-                  Already registered your face?{" "}
-                  <button className="lp-switch-link" style={{ fontSize: 12 }} onClick={() => setFaceModal("login")}>
-                    Use Face Login 🤳
-                  </button>
-                </p>
-              )}
             </div>
           )}
 
