@@ -41,6 +41,7 @@ function Login({ setLoggedIn, setUsername, setIsAdmin, setIsGoogleUser }) {
   const [otpError, setOtpError]       = useState("");
   const [otpTimer, setOtpTimer]       = useState(300); // 5 min countdown
   const [faceModal, setFaceModal]     = useState(null); // null | "login" | "register"
+  const [showFacePrompt, setShowFacePrompt] = useState(false);
   const otpRefs                       = useRef([]);
   const googleBtnRef                  = useRef(null);
 
@@ -124,7 +125,15 @@ function Login({ setLoggedIn, setUsername, setIsAdmin, setIsGoogleUser }) {
         body: JSON.stringify({ email: info.email, name: info.name || info.email.split("@")[0], sub: info.sub }),
       });
       const d = await res.json();
-      if (res.ok) { setUsername(d.username); setLoggedIn(true); if (setIsGoogleUser) setIsGoogleUser(true); }
+      if (res.ok) {
+        setUsername(d.username);
+        if (setIsGoogleUser) setIsGoogleUser(true);
+        if (!d.face_registered) {
+          setShowFacePrompt(true);
+        } else {
+          setLoggedIn(true);
+        }
+      }
       else { setError(d.detail || "Google sign-in failed."); }
     } catch { setError("Google sign-in failed. Please try again."); }
     finally { setLoading(false); }
@@ -193,7 +202,14 @@ function Login({ setLoggedIn, setUsername, setIsAdmin, setIsGoogleUser }) {
         body: JSON.stringify({ username, otp }),
       });
       const data = await res.json();
-      if (res.ok) { setUsername(username); setLoggedIn(true); }
+      if (res.ok) {
+        setUsername(username);
+        if (!data.face_registered) {
+          setShowFacePrompt(true);
+        } else {
+          setLoggedIn(true);
+        }
+      }
       else { setOtpError(data.detail || "Invalid OTP."); }
     } catch { setOtpError("Server error. Please try again."); }
     finally { setOtpLoading(false); }
@@ -266,11 +282,56 @@ function Login({ setLoggedIn, setUsername, setIsAdmin, setIsGoogleUser }) {
               setLoggedIn(true);
             } else {
               setFaceModal(null);
-              alert("✅ Face registered! You can now use face login next time.");
+              setLoggedIn(true); // proceed to dashboard after face register
             }
           }}
-          onClose={() => setFaceModal(null)}
+          onClose={() => { setFaceModal(null); setLoggedIn(true); }} // skip on close
         />
+      )}
+
+      {/* ── FACE REGISTRATION PROMPT (after login) ── */}
+      {showFacePrompt && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
+        }}>
+          <div style={{
+            background: "var(--surface, #1e1e2e)", border: "1.5px solid var(--border, #333)",
+            borderRadius: 18, padding: "36px 32px", maxWidth: 400, width: "90%",
+            textAlign: "center", boxShadow: "0 8px 40px rgba(0,0,0,0.4)",
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🧠</div>
+            <h2 style={{ margin: "0 0 8px", fontSize: 20, color: "var(--text, #fff)" }}>
+              Enable Face Login?
+            </h2>
+            <p style={{ color: "var(--text-muted, #aaa)", fontSize: 14, marginBottom: 28, lineHeight: 1.6 }}>
+              Register your face now for faster, one-tap login next time. Takes just a few seconds!
+            </p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <button
+                onClick={() => { setShowFacePrompt(false); setFaceModal("register"); }}
+                style={{
+                  padding: "10px 24px", borderRadius: 10, border: "none",
+                  background: "var(--accent, #6c63ff)", color: "#fff",
+                  fontWeight: 600, fontSize: 14, cursor: "pointer",
+                }}
+              >
+                📷 Register Face
+              </button>
+              <button
+                onClick={() => { setShowFacePrompt(false); setLoggedIn(true); }}
+                style={{
+                  padding: "10px 24px", borderRadius: 10,
+                  border: "1.5px solid var(--border, #444)",
+                  background: "transparent", color: "var(--text-muted, #aaa)",
+                  fontSize: 14, cursor: "pointer",
+                }}
+              >
+                Skip for now
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {modal === "privacy" && (
